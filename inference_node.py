@@ -14,9 +14,38 @@ from configs.config import Config
 from models.tactile_act import TactileACT
 from models.tactile_diffusion import TactileDiffusion 
 
+class TemporalEnsembler:
+    def __init__(self, horizon, action_dim, device):
+        self.horizon = horizon
+        self.action_dim = action_dim
+        self.device = device
+
+        # cumulative buffer: [Horizon, Action_Dim]
+        self.action_sum = torch.zeros((horizon, action_dim), device=device)
+        self.weight_sum = torch.zeros((horizon, 1), device=device)
+
+        # Exponential Weighting
+        k = 0.01
+        # [Horizon, 1]
+        self.weights = torch.exp(-k * torch.arange(horizon, device=device)).unsqueeze(1)
+
+    def update(self, new_action_chunk):
+        self.action_sum += new_action_chunk * self.weights
+        self.weight_sum += self.weights
+
+        current_action = self.action_sum[0] / self.weight_sum[0]
+
+        self.action_sum[:-1] = self.action_sum[1:].clone()
+        self.action_sum[-1] = 0.0 
+
+        self.weight_sum[:-1] = self.weight_sum[1:].clone()
+        self.weight_sum[-1] = 0.0
+
+        return current_action
+
 class InferenceNode(Node):
     def __init__(self):
-        super().__init__('tactile_act_inference')
+        super().__init__('tactile_act_inference') # tactile_diffusion_inference
         
         self.cfg = Config()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -24,6 +53,12 @@ class InferenceNode(Node):
 
         self.model = TactileACT(self.cfg).to(self.device)
         
+        chunk_size = self.cfg.CHUNK_SIZE
+        action_dim = self.cfg.ACTION_DIM
+
+        self.ensembler = TemporalEnsembler(chunk_size, action_dim)
+        self.get_logger().info(f"Temporal Ensembling initialized (Horizon: {chunk_size})")
+
         ckpt_path = "checkpoints/best_model.pth" 
         if os.path.exists(ckpt_path):
             self.model.load_state_dict(torch.load(ckpt_path, map_location=self.device))
@@ -104,12 +139,13 @@ class InferenceNode(Node):
         with torch.no_grad():
             pred_chunk, _, _ = self.model(qpos_norm, vis_tensor, tac_tensor, is_training=False)
         
-        # TODO: Temporal Aggregation
-        next_action_norm = pred_chunk[0, 0, :] # [8]
-
-        # Denormalize      
-        next_action_real = (next_action_norm * self.qpos_std) + self.qpos_mean
+        # [Chunk_Size, 8]
+        new_chunk = pred_chunk[0]
         
+        # Temporal Aggregation (Update & Smooth)
+        smooth_action_norm = self.ensembler.update(new_chunk) # [8]
+        next_action_real = (smooth_action_norm * self.qpos_std) + self.qpos_mean
+    
         # Publish 
         cmd_msg = Float64MultiArray()
         cmd_msg.data = next_action_real.cpu().numpy().tolist()
