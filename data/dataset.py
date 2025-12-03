@@ -2,10 +2,11 @@ import torch
 from torch.utils.data import Dataset
 import h5py
 import numpy as np
+import os, json
 from torchvision import transforms
 
 class RobotDataset(Dataset):
-    def __init__(self, data_path, config):
+    def __init__(self, data_path, config, save_stats=True):
         """
         Loads HDF5 data and prepares it for model training.
         """
@@ -26,6 +27,10 @@ class RobotDataset(Dataset):
         # Avoid division by zero
         self.qpos_std = torch.clip(self.qpos_std, 1e-2, None) 
 
+        if save_stats:
+            stats_path = os.path.join(os.path.dirname(data_path), 'stats.json')
+            self._save_stats(stats_path)
+
         # Image Transforms for ResNet
         self.transform = transforms.Compose([
             transforms.ToPILImage(),
@@ -36,6 +41,18 @@ class RobotDataset(Dataset):
         ])
         
         print(f"Dataset Loaded: {self.total_steps} steps.")
+
+    def _save_stats(self, path):
+            stats = {
+                "qpos_mean": self.qpos_mean.tolist(),
+                "qpos_std": self.qpos_std.tolist(),
+                # same stats as qpos
+                "action_mean": self.qpos_mean.tolist(),
+                "action_std": self.qpos_std.tolist()
+            }
+            with open(path, 'w') as f:
+                json.dump(stats, f, indent=4)
+            print(f"Statistics saved to {path}")
 
     def __len__(self):
         # We need to stop before the end to allow chunking
