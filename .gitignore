@@ -1,0 +1,28 @@
+# Python & Environment
+__pycache__/
+*.py[cod]
+*.class
+venv/
+.env
+.DS_Store
+
+# Models & Checkpoints
+*.pth
+*.pt
+*.ckpt
+checkpoints/
+outputs/
+
+# Data & Rosbags
+data/*.h5
+data/*.hdf5
+data/*.bag
+
+# ROS 2 bag 
+data/**/*.mcap
+data/**/*.db3
+data/rosbag2_*/
+
+# logs
+logs/
+wandb/
