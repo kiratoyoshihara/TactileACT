@@ -1,0 +1,131 @@
+import rclpy
+from rclpy.node import Node
+import torch
+import numpy as np
+import json
+import os
+from sensor_msgs.msg import Image, JointState
+from std_msgs.msg import Float64MultiArray
+from cv_bridge import CvBridge
+from torchvision import transforms
+from PIL import Image as PILImage
+
+from configs.config import Config
+from models.tactile_act import TactileACT
+from models.tactile_diffusion import TactileDiffusion 
+
+class InferenceNode(Node):
+    def __init__(self):
+        super().__init__('tactile_act_inference')
+        
+        self.cfg = Config()
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.get_logger().info(f"Inference device: {self.device}")
+
+        self.model = TactileACT(self.cfg).to(self.device)
+        
+        ckpt_path = "checkpoints/best_model.pth" 
+        if os.path.exists(ckpt_path):
+            self.model.load_state_dict(torch.load(ckpt_path, map_location=self.device))
+            self.get_logger().info(f"Loaded weights from {ckpt_path}")
+        else:
+            self.get_logger().error(f"Checkpoint not found: {ckpt_path}")
+        
+        self.model.eval()
+
+        # Denormalize
+        stats_path = "data/stats.json" 
+        with open(stats_path, 'r') as f:
+            stats = json.load(f)
+        
+        self.qpos_mean = torch.tensor(stats['action_mean'], device=self.device)
+        self.qpos_std = torch.tensor(stats['action_std'], device=self.device)
+        self.get_logger().info("Loaded stats.json for denormalization")
+
+        # preprocess as training
+        self.transform = transforms.Compose([
+            transforms.Resize(self.cfg.IMG_HEIGHT),
+            transforms.CenterCrop(self.cfg.IMG_HEIGHT),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+
+        # ROS Setup
+        self.bridge = CvBridge()
+        
+        # Subscribers
+        # TODO: check KUKA's topic name
+        self.sub_joint = self.create_subscription(
+            JointState, '/joint_states', self.joint_callback, 1)
+        self.sub_vis = self.create_subscription(
+            Image, '/camera/image_raw', self.vis_callback, 1)
+        self.sub_tac = self.create_subscription(
+            Image, '/gelsight/image_raw', self.tac_callback, 1)
+        
+        # Publisher
+        # TODO: check KUKA's package name
+        self.pub_cmd = self.create_publisher(
+            Float64MultiArray, '/forward_position_controller/commands', 1)
+
+        # Buffers
+        self.curr_qpos = None
+        self.curr_vis = None
+        self.curr_tac = None
+
+        # TODO: may need some tuning
+        self.timer = self.create_timer(0.05, self.control_loop) # 20Hz
+
+    def joint_callback(self, msg):
+        # TODO: ensure JointState order is the same order as training data
+        self.curr_qpos = np.array(msg.position, dtype=np.float32)
+
+    def vis_callback(self, msg):
+        cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='rgb8')
+        self.curr_vis = PILImage.fromarray(cv_img)
+
+    def tac_callback(self, msg):
+        cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='rgb8')
+        self.curr_tac = PILImage.fromarray(cv_img)
+
+    def control_loop(self):
+        # wait for data
+        if self.curr_qpos is None or self.curr_vis is None or self.curr_tac is None:
+            return
+
+        # Joint State 
+        qpos_tensor = torch.from_numpy(self.curr_qpos).to(self.device)
+        qpos_norm = (qpos_tensor - self.qpos_mean) / self.qpos_std
+        qpos_norm = qpos_norm.unsqueeze(0) # Batch dim: [1, 8]
+
+        # Images 
+        vis_tensor = self.transform(self.curr_vis).to(self.device).unsqueeze(0) # [1, 3, 224, 224]
+        tac_tensor = self.transform(self.curr_tac).to(self.device).unsqueeze(0) # [1, 3, 224, 224]
+
+        with torch.no_grad():
+            pred_chunk, _, _ = self.model(qpos_norm, vis_tensor, tac_tensor, is_training=False)
+        
+        # TODO: Temporal Aggregation
+        next_action_norm = pred_chunk[0, 0, :] # [8]
+
+        # Denormalize      
+        next_action_real = (next_action_norm * self.qpos_std) + self.qpos_mean
+        
+        # Publish 
+        cmd_msg = Float64MultiArray()
+        cmd_msg.data = next_action_real.cpu().numpy().tolist()
+        self.pub_cmd.publish(cmd_msg)
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = InferenceNode()
+    
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
