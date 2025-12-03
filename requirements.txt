@@ -1,3 +1,7 @@
 torch
 numpy
 matplotlib
+rosbag
+h5py
+opencv-python 
+Pillow
