@@ -31,7 +31,7 @@ class Config:
     
     # trick: Modality Dropout
     # Probability of dropping vision to force tactile usage
-    MODALITY_DROPOUT_RATE = 0.
+    MODALITY_DROPOUT_RATE = 0.3
 
     # For Diffusion Policy
     NUM_DIFFUSION_ITERS = 100  
