@@ -49,12 +49,12 @@ def verify_tactile_act_dimensions():
     # expected: [B, 100, 8]
     expected_action_shape = (B, cfg.CHUNK_SIZE, cfg.ACTION_DIM)
     assert pred_actions.shape == expected_action_shape, \
-        f"❌ Mismatch! Expected {expected_action_shape}, but got {pred_actions.shape}"
+        f"Mismatch! Expected {expected_action_shape}, but got {pred_actions.shape}"
     
     # CVAE output: [B, 32]
     expected_latent_shape = (B, cfg.LATENT_DIM)
     assert mu.shape == expected_latent_shape, \
-        f"❌ Mismatch in CVAE mu! Expected {expected_latent_shape}, got {mu.shape}"
+        f"Mismatch in CVAE mu! Expected {expected_latent_shape}, got {mu.shape}"
 
     print("\n✅ Assertion Passed: Output dimensions are correct.")
 
@@ -115,11 +115,11 @@ def verify_tactile_diffusion_dimensions():
         print(f"  Loss value: {loss.item()}")
         print(f"  Loss shape: {loss.shape} (Should be scalar)")
         
-        assert loss.ndim == 0, "❌ Loss should be a scalar (0-dim tensor)"
+        assert loss.ndim == 0, "Loss should be a scalar (0-dim tensor)"
         print("✅ Training pass successful.")
         
     except RuntimeError as e:
-        print(f"❌ Training pass FAILED: {e}")
+        print(f"Training pass FAILED: {e}")
         raise e
 
     # check for sampling logic
@@ -133,12 +133,12 @@ def verify_tactile_diffusion_dimensions():
         # expected: [B, T, Action_Dim]
         expected_shape = (B, cfg.CHUNK_SIZE, cfg.ACTION_DIM)
         assert sampled_actions.shape == expected_shape, \
-            f"❌ Mismatch! Expected {expected_shape}, but got {sampled_actions.shape}"
+            f"Mismatch! Expected {expected_shape}, but got {sampled_actions.shape}"
             
         print("✅ Inference pass successful.")
         
     except RuntimeError as e:
-        print(f"❌ Inference pass FAILED: {e}")
+        print(f"Inference pass FAILED: {e}")
         raise e
 
     # check for Conditional Vector Size
