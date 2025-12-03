@@ -234,4 +234,4 @@ class TactileDiffusion(nn.Module):
                 sigma = torch.sqrt(beta)
                 current_sample += sigma * noise
                 
-        return current_sample
+        return current_sample # [B, CHUNK_SIZE, 8]
