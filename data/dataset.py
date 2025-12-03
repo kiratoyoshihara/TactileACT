@@ -1,28 +1,67 @@
-# TODO: implement synchronization logic 
 import torch
 from torch.utils.data import Dataset
+import h5py
 import numpy as np
+from torchvision import transforms
 
 class RobotDataset(Dataset):
     def __init__(self, data_path, config):
+        """
+        Loads HDF5 data and prepares it for model training.
+        """
         self.config = config
-        # List of episode file paths
-        self.episodes = ["ep1.rosbag", "ep2.rosbag"] 
+        self.data_path = data_path
+        
+        # Load data into memory 
+        with h5py.File(data_path, 'r') as f:
+            self.qpos = f['qpos'][:]        # [Total_Steps, 8]
+            self.vision = f['vision'][:]    # [Total_Steps, H, W, 3]
+            self.tactile = f['tactile'][:]  # [Total_Steps, H, W, 3]
+            self.action = f['action'][:]    # [Total_Steps, 8]
+            self.total_steps = f.attrs['num_samples']
+
+        # Normalization Stats
+        self.qpos_mean = torch.from_numpy(np.mean(self.qpos, axis=0)).float()
+        self.qpos_std = torch.from_numpy(np.std(self.qpos, axis=0)).float()
+        # Avoid division by zero
+        self.qpos_std = torch.clip(self.qpos_std, 1e-2, None) 
+
+        # Image Transforms for ResNet
+        self.transform = transforms.Compose([
+            transforms.ToPILImage(),
+            transforms.Resize(config.IMG_HEIGHT), 
+            transforms.CenterCrop(config.IMG_HEIGHT), 
+            transforms.ToTensor(), 
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+        
+        print(f"Dataset Loaded: {self.total_steps} steps.")
 
     def __len__(self):
-        return len(self.episodes) * 100 
+        # We need to stop before the end to allow chunking
+        return self.total_steps - self.config.CHUNK_SIZE
 
     def __getitem__(self, idx):
-        # TODO:data loading strategy here
-        # Proprioception (Normalized)
-        qpos = torch.randn(self.config.STATE_DIM)
+        # Current Observation
+        qpos_raw = self.qpos[idx]
+        vision_raw = self.vision[idx]
+        tactile_raw = self.tactile[idx]
         
-        # Images (Normalized 0-1 or ImageNet stats)
-        image = torch.randn(3, self.config.IMG_HEIGHT, self.config.IMG_WIDTH)
-        tactile = torch.randn(3, self.config.IMG_HEIGHT, self.config.IMG_WIDTH)
+        # Action Chunking (Future sequence)
+        action_chunk_raw = self.action[idx : idx + self.config.CHUNK_SIZE]
+                
+        # Qpos: Normalize
+        qpos = torch.from_numpy(qpos_raw).float()
+        qpos = (qpos - self.qpos_mean) / self.qpos_std
         
-        # Action Chunk (Ground Truth)
-        # Future 100 steps
-        actions = torch.randn(self.config.CHUNK_SIZE, self.config.ACTION_DIM)
+        # Action: Normalize 
+        actions = torch.from_numpy(action_chunk_raw).float()
+        actions = (actions - self.qpos_mean) / self.qpos_std
+        
+        image = self.transform(vision_raw)
+        tactile = self.transform(tactile_raw)
         
         return qpos, image, tactile, actions
+
+    def get_stats(self):
+        return self.qpos_mean, self.qpos_std
