@@ -80,12 +80,6 @@ def verify_tactile_diffusion_dimensions():
     print("="*50)
 
     cfg = Config()
-    
-    if not hasattr(cfg, 'NUM_DIFFUSION_ITERS'):
-        print("⚠️ Config missing diffusion params. Using defaults.")
-        cfg.NUM_DIFFUSION_ITERS = 100
-        cfg.DIFFUSION_DIM = 256
-        
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Device: {device}")
 
