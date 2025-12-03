@@ -31,4 +31,9 @@ class Config:
     
     # trick: Modality Dropout
     # Probability of dropping vision to force tactile usage
-    MODALITY_DROPOUT_RATE = 0.3
+    MODALITY_DROPOUT_RATE = 0.
+
+    # For Diffusion Policy
+    NUM_DIFFUSION_ITERS = 100  
+    DIFFUSION_DIM = 256        # Base channels of U-Net
+    KERNEL_SIZE = 5            # Conv1d
