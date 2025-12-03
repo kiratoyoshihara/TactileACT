@@ -1,10 +1,11 @@
 import torch
 from configs.config import Config
 from models.tactile_act import TactileACT
+from models.tactile_diffusion import TactileDiffusion
 
-def verify_model_dimensions():
+def verify_tactile_act_dimensions():
     print("="*50)
-    print("🔍 Starting Model Dimension Verification...")
+    print("🔍 Starting ACT Dimension Verification...")
     print("="*50)
 
     cfg = Config()
@@ -71,8 +72,84 @@ def verify_model_dimensions():
     # Check length of Transformer input and Chunk Size
     print(f"  Decoder Output (Chunk Size): {cfg.CHUNK_SIZE}")
     
-    print("\n🎉 Congrats!! All Dimension Checks Passed.")
+    print("\n🎉 Congrats!! All ACT Dimension Checks Passed.\n")
+
+def verify_tactile_diffusion_dimensions():
+    print("="*50)
+    print("🔍 Starting Diffusion Policy Dimension Verification...")
     print("="*50)
 
+    cfg = Config()
+    
+    if not hasattr(cfg, 'NUM_DIFFUSION_ITERS'):
+        print("⚠️ Config missing diffusion params. Using defaults.")
+        cfg.NUM_DIFFUSION_ITERS = 100
+        cfg.DIFFUSION_DIM = 256
+        
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Device: {device}")
+
+    model = TactileDiffusion(cfg).to(device)
+    print("✅ Model initialized successfully.")
+
+    B = 2
+    T = cfg.CHUNK_SIZE
+    
+    # [B, 8]
+    dummy_qpos = torch.randn(B, cfg.STATE_DIM).to(device)
+    # [B, 3, 224, 224]
+    dummy_image = torch.randn(B, 3, cfg.IMG_HEIGHT, cfg.IMG_WIDTH).to(device)
+    dummy_tactile = torch.randn(B, 3, cfg.IMG_HEIGHT, cfg.IMG_WIDTH).to(device)
+    # [B, T, 8]
+    dummy_actions = torch.randn(B, T, cfg.ACTION_DIM).to(device)
+
+    print("\n[Input Tensors]")
+    print(f"  qpos:    {dummy_qpos.shape}")
+    print(f"  image:   {dummy_image.shape}")
+    print(f"  tactile: {dummy_tactile.shape}")
+    print(f"  actions: {dummy_actions.shape}")
+
+    print("\n[Training Pass: Compute Loss]")
+    try:
+        loss = model.compute_loss(dummy_qpos, dummy_image, dummy_tactile, dummy_actions)
+        print(f"  Loss value: {loss.item()}")
+        print(f"  Loss shape: {loss.shape} (Should be scalar)")
+        
+        assert loss.ndim == 0, "❌ Loss should be a scalar (0-dim tensor)"
+        print("✅ Training pass successful.")
+        
+    except RuntimeError as e:
+        print(f"❌ Training pass FAILED: {e}")
+        raise e
+
+    # check for sampling logic
+    print("\n[Inference Pass: Sampling Actions]")
+    print(f"  Running DDPM sampling loop ({cfg.NUM_DIFFUSION_ITERS} steps)... this might take a moment.")
+    
+    try:
+        sampled_actions = model.sample(dummy_qpos, dummy_image, dummy_tactile)
+        print(f"  Sampled Output shape: {sampled_actions.shape}")
+        
+        # expected: [B, T, Action_Dim]
+        expected_shape = (B, cfg.CHUNK_SIZE, cfg.ACTION_DIM)
+        assert sampled_actions.shape == expected_shape, \
+            f"❌ Mismatch! Expected {expected_shape}, but got {sampled_actions.shape}"
+            
+        print("✅ Inference pass successful.")
+        
+    except RuntimeError as e:
+        print(f"❌ Inference pass FAILED: {e}")
+        raise e
+
+    # check for Conditional Vector Size
+    print("\n[Internal Logic Check]")
+    # Time(256) + Vision(512) + Tactile(512) + State(512) = 1792
+    expected_cond_dim = 256 + (cfg.HIDDEN_DIM * 3)
+    print(f"  Expected Global Condition Dim: {expected_cond_dim}")
+
+    print("\n🎉 Congrats!! All Diffusion Policy Dimension Checks Passed.\n")
+
+
 if __name__ == "__main__":
-    verify_model_dimensions()
+    verify_tactile_act_dimensions()
+    verify_tactile_diffusion_dimensions()

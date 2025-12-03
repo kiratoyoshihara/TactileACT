@@ -20,7 +20,7 @@ class Config:
     LATENT_DIM = 32
     
     # Action Chunking
-    CHUNK_SIZE = 100  # Number of future actions to predict
+    CHUNK_SIZE = 96  # Number of future actions to predict
     
     # Training Hyperparameters
     BATCH_SIZE = 8 
