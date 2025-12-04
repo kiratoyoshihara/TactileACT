@@ -117,7 +117,7 @@ class InferenceNode(Node):
         self.vis_interval = 20 # every 1 sec for 20Hz
 
         # TODO: may need some tuning
-        self.timer = self.create_timer(0.05, self.control_loop) # 20Hz
+        self.timer = self.create_timer(0.066, self.control_loop) # 15Hz
 
     def joint_callback(self, msg):
         # TODO: ensure JointState order is the same order as training data
