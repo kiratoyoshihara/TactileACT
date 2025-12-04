@@ -25,7 +25,7 @@ class Config:
     # Training Hyperparameters
     BATCH_SIZE = 8 
     LR = 1e-4
-    WEIGHT_DECAY = 1e-4
+    WEIGHT_DECAY = 1e-4 
     NUM_EPOCHS = 100
     KL_WEIGHT = 0.1  # Beta for CVAE KL Loss
     
