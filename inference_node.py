@@ -50,8 +50,11 @@ class InferenceNode(Node):
         self.cfg = Config()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.get_logger().info(f"Inference device: {self.device}")
-
-        self.model = TactileACT(self.cfg).to(self.device)
+        
+        if self.cfg.MODEL_TYPE == 'ACT':
+            self.model = TactileACT(self.cfg).to(self.device)
+        else:
+            self.model = TactileDiffusion(self.cfg).to(self.device)
         
         chunk_size = self.cfg.CHUNK_SIZE
         action_dim = self.cfg.ACTION_DIM
@@ -137,13 +140,18 @@ class InferenceNode(Node):
         tac_tensor = self.transform(self.curr_tac).to(self.device).unsqueeze(0) # [1, 3, 224, 224]
 
         with torch.no_grad():
-            pred_chunk, _, _ = self.model(qpos_norm, vis_tensor, tac_tensor, is_training=False)
-        
-        # [Chunk_Size, 8]
-        new_chunk = pred_chunk[0]
-        
+            if self.cfg.MODEL_TYPE == 'ACT':
+                # ACT: [1, Chunk, 8] -> Temporal Aggregation
+                pred_chunk, _, _ = self.model(qpos_norm, vis_tensor, tac_tensor, is_training=False)
+                raw_action_chunk = pred_chunk[0] 
+                
+            elif self.cfg.MODEL_TYPE == 'DIFFUSION':
+                # Diffusion: [1, Chunk, 8] -> run 100 times loop
+                pred_chunk = self.model.sample(qpos_norm, vis_tensor, tac_tensor)
+                raw_action_chunk = pred_chunk[0]
+
         # Temporal Aggregation (Update & Smooth)
-        smooth_action_norm = self.ensembler.update(new_chunk) # [8]
+        smooth_action_norm = self.ensembler.update(raw_action_chunk) # [8]
         next_action_real = (smooth_action_norm * self.qpos_std) + self.qpos_mean
     
         # Publish 
