@@ -15,8 +15,6 @@ from configs.config import Config
 from models.tactile_act import TactileACT
 from models.tactile_diffusion import TactileDiffusion 
 
-from utils.vis_attention import visualize_attention
-
 class TemporalEnsembler:
     def __init__(self, horizon, action_dim, device):
         self.horizon = horizon
