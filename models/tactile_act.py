@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from models.backbones import ResNetBackbone
 from models.cvae import CVAEEncoder
+from .vis_transformer import VisTransformer
 
 class TactileACT(nn.Module):
     def __init__(self, config):
@@ -35,7 +36,7 @@ class TactileACT(nn.Module):
         # Query Embeddings for the Decoder (Learnable Questions)
         self.query_embed = nn.Embedding(config.CHUNK_SIZE, config.HIDDEN_DIM)
         
-        self.transformer = nn.Transformer(
+        self.transformer = VisTransformer(
             d_model=config.HIDDEN_DIM,
             nhead=config.NHEADS,
             num_encoder_layers=config.ENC_LAYERS,
@@ -102,3 +103,6 @@ class TactileACT(nn.Module):
         pred_actions = self.action_head(hs) # [B, 100, 8]
         
         return pred_actions, mu, log_var
+    
+    def get_attention_weights(self):
+        return self.transformer.get_last_cross_attention()
