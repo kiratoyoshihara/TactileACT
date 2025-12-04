@@ -59,7 +59,7 @@ class InferenceNode(Node):
         chunk_size = self.cfg.CHUNK_SIZE
         action_dim = self.cfg.ACTION_DIM
 
-        self.ensembler = TemporalEnsembler(chunk_size, action_dim)
+        self.ensembler = TemporalEnsembler(chunk_size, action_dim, self.device)
         self.get_logger().info(f"Temporal Ensembling initialized (Horizon: {chunk_size})")
 
         ckpt_path = "checkpoints/best_model.pth" 
