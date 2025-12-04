@@ -1,4 +1,7 @@
 class Config:
+    # Model define
+    MODEL_TYPE = 'ACT' # 'Diffusion'
+    
     # Data dimensions
     # KUKA iiwa (7 joints) + Gripper (1 joint) = 8
     STATE_DIM = 8
