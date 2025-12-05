@@ -7,6 +7,8 @@ import os
 import cv2
 from sensor_msgs.msg import Image, JointState
 from std_msgs.msg import Float64MultiArray
+from lbr_fri_msgs.msg import LBRState, LBRPositionCommand
+
 from cv_bridge import CvBridge
 from torchvision import transforms
 from PIL import Image as PILImage
@@ -93,23 +95,27 @@ class InferenceNode(Node):
         self.bridge = CvBridge()
         
         # Subscribers
-        # TODO: check KUKA's topic name
-        self.sub_joint = self.create_subscription(
-            JointState, '/joint_states', self.joint_callback, 1)
+        self.sub_kuka = self.create_subscription(
+            LBRState, 'lbr_state', self.kuka_callback, 1)
+        self.sub_hande = self.create_subscription(
+            JointState, 'hande/joint_states', self.hande_callback, 1)
         self.sub_vis = self.create_subscription(
             Image, '/camera/image_raw', self.vis_callback, 1)
         self.sub_tac = self.create_subscription(
             Image, '/gelsight/image_raw', self.tac_callback, 1)
         
-        # Publisher
-        # TODO: check KUKA's package name
-        self.pub_cmd = self.create_publisher(
-            Float64MultiArray, '/forward_position_controller/commands', 1)
+        # Publishers
+        self.pub_kuka = self.create_publisher(
+            LBRPositionCommand, '/lbr_command', 1)
+        self.pub_hande = self.create_publisher(
+            Float64MultiArray, '/hande/command', 1)
         # attention map visualizer
-        self.pub_vis_debug = self.create_publisher(Image, '/debug/attention_map', 1)
+        self.pub_vis_debug = self.create_publisher(
+            Image, '/debug/attention_map', 1)
        
         # Buffers
-        self.curr_qpos = None
+        self.curr_kuka_qpos = None
+        self.curr_hande_qpos = None
         self.curr_vis = None
         self.curr_tac = None
 
@@ -119,9 +125,12 @@ class InferenceNode(Node):
         # TODO: may need some tuning
         self.timer = self.create_timer(0.066, self.control_loop) # 15Hz
 
-    def joint_callback(self, msg):
-        # TODO: ensure JointState order is the same order as training data
-        self.curr_qpos = np.array(msg.position, dtype=np.float32)
+    def kuka_callback(self, msg):
+        self.curr_kuka_qpos = np.array(msg.measured_joint_position, dtype=np.float32)
+
+    def hande_callback(self, msg):
+        if len(msg.position) > 0:
+            self.curr_hande_qpos = np.array([msg.position[0]], dtype=np.float32)     
 
     def vis_callback(self, msg):
         cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='rgb8')
@@ -132,12 +141,15 @@ class InferenceNode(Node):
         self.curr_tac = PILImage.fromarray(cv_img)
 
     def control_loop(self):
-        # wait for data
-        if self.curr_qpos is None or self.curr_vis is None or self.curr_tac is None:
+        # Wait for ALL sensors
+        if (self.curr_kuka_qpos is None or self.curr_hande_qpos is None or 
+            self.curr_vis is None or self.curr_tac is None):
             return
+        
+        curr_qpos = np.concatenate([self.curr_kuka_qpos, self.curr_hande_qpos])
 
         # Joint State 
-        qpos_tensor = torch.from_numpy(self.curr_qpos).to(self.device)
+        qpos_tensor = torch.from_numpy(curr_qpos).to(self.device)
         qpos_norm = (qpos_tensor - self.qpos_mean) / self.qpos_std
         qpos_norm = qpos_norm.unsqueeze(0) # Batch dim: [1, 8]
 
@@ -162,11 +174,21 @@ class InferenceNode(Node):
         # Temporal Aggregation (Update & Smooth)
         smooth_action_norm = self.ensembler.update(raw_action_chunk) # [8]
         next_action_real = (smooth_action_norm * self.qpos_std) + self.qpos_mean
-    
-        # Publish 
-        cmd_msg = Float64MultiArray()
-        cmd_msg.data = next_action_real.cpu().numpy().tolist()
-        self.pub_cmd.publish(cmd_msg)
+
+        cmd_all = next_action_real.cpu().numpy() #[8]
+
+        # Publish (split & publish)
+        # KUKA
+        cmd_kuka = cmd_all[:7]
+        kuka_msg = LBRPositionCommand()
+        kuka_msg.joint_position = cmd_kuka.tolist()
+        self.pub_kuka.publish(kuka_msg)
+
+        # Hand-E
+        cmd_hande = cmd_all[-1]
+        hande_msg = Float64MultiArray()
+        hande_msg.data = cmd_hande.tolist()
+        self.pub_hande.publish(hande_msg)
 
         self.step_cnt += 1
 
