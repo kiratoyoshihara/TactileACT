@@ -1,20 +1,19 @@
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, ExecuteProcess
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch_ros.actions import Node
 
 def generate_launch_description():
     sensors_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
-            'scripts/launch_sensors.py' 
+            '/root/TactileACT/scripts/sensors.launch.py' 
         ])
     )
 
-    hande_driver = Node(
-        package='tactile_act', 
-        executable='python3',
-        arguments=['scripts/hande_driver_node.py'],
-        name='hande_driver',
+    hande_driver = ExecuteProcess(
+        cmd=[
+            'python3', 
+            'scripts/hande_driver_node.py'
+        ],
         output='screen'
     )
 
