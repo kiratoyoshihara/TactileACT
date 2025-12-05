@@ -3,7 +3,7 @@ import h5py
 import numpy as np
 import cv2
 from rosbags.rosbag2 import Reader
-from rosbags.serde import deserialize_cdr, 
+from rosbags.serde import deserialize_cdr
 
 TOPICS = {
     'vision':  '/camera/image_raw',
