@@ -9,6 +9,34 @@
 - **Environment** Ubuntu 22.04/ROS2 Humble 
 
 ## 📂 Project Structure
+    ```text
+    TactileACT/
+    ├── configs/
+    │   └── config.py              # Hyperparameters 
+    ├── data/
+    │   └── dataset.py             # PyTorch Dataset class 
+    ├── models/
+    │   ├── backbones.py           # ResNet encoders (Vision & Tactile)
+    │   ├── cvae.py                # CVAE module for action generation
+    │   ├── tactile_act.py         # Main ACT model with Dual Encoders
+    │   └── vis_transformer.py     # Custom Transformer for attention visualization
+    ├── scripts/                   
+    │   ├── bringup_launch.py      # Master launch file (Sensors + Drivers)
+    │   ├── convert_bag_to_hdf5.py # Data processing (rosbag -> hdf5)
+    │   ├── hande_driver_node.py   # Hand-E gripper driver
+    │   ├── launch_sensors.py      # Camera & GelSight startup
+    │   ├── record_episode.sh      # Data collection helper script
+    │   ├── teleop_gripper.py      # Keyboard teleop for gripper during data collection
+    │   └── vis_dataset.py         # Data verification tool
+    ├── utils/
+    │   ├── utils.py               # Helper functions
+    │   ├── vis_attention.py       # Attention map visualization
+    │   └── vis_trajectory.py      # Trajectory plotting
+    ├── debug.py                   # Debugging script
+    ├── inference_node.py          # Real-time inference ROS node
+    ├── train.py                   # Training loop
+    └── requirements.txt           # Python dependencies
+    ```
 
 ## 🚀 Workflow
 1. **Hardware Bring-up & Data Collection**
