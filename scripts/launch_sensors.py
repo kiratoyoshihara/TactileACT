@@ -19,8 +19,7 @@ def generate_launch_description():
             'brightness': 50,
             'auto_white_balance': True,
             'autoexposure': True,
-        }],
-        remappings=[('image_raw', 'image_raw')]
+        }]
     )
 
     # GelSight
@@ -38,8 +37,7 @@ def generate_launch_description():
             'pixel_format': 'mjpeg2rgb',    
             'brightness': 50,
             'auto_white_balance': False,
-        }],
-        remappings=[('image_raw', 'image_raw')]
+        }]
     )
 
     return LaunchDescription([
