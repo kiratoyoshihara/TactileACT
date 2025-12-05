@@ -9,7 +9,6 @@
 - **Environment** Ubuntu 22.04/ROS2 Humble 
 
 ## 📂 Project Structure
-    ```text
     TactileACT/
     ├── configs/
     │   └── config.py              # Hyperparameters 
@@ -36,7 +35,6 @@
     ├── inference_node.py          # Real-time inference ROS node
     ├── train.py                   # Training loop
     └── requirements.txt           # Python dependencies
-    ```
 
 ## 🚀 Workflow
 1. **Hardware Bring-up & Data Collection**
