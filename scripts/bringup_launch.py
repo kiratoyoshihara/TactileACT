@@ -5,7 +5,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 def generate_launch_description():
     sensors_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
-            '/root/TactileACT/scripts/sensors.launch.py' 
+            'scripts/sensors.launch.py' 
         ])
     )
 
