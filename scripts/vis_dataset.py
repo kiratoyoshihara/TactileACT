@@ -1,7 +1,6 @@
 import h5py
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 import argparse
 
 def visualize_dataset(dataset_path):
