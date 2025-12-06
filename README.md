@@ -44,38 +44,44 @@
 
     We collect human demonstration data using Kinesthetic Teaching (gravity compensation mode) for the arm and keyboard teleoperation for the gripper.
     
-    1. Start KUKA Driver (In a separate terminal)
+    1. Start KUKA Driver (In a separate terminal). Note: Adjust the package name according to your ROS 1 driver (e.g., `iiwa_stack` or `lbr_fri_ros_stack`).
 
         ```bash
-        ros2 launch lbr_fri_ros2_stack lbr_fri_ros2.launch.py
+        roslaunch lbr_fri_ros_stack lbr_driver.launch
         ```
-    2. Start System (Sensors & Gripper)
+    2. Start System. This launches RealSense, GelSight, and the Hand-E driver.
 
         ```bash
-        ros2 launch scripts/bringup_launch.py
+        roslaunch tactile_act bringup.launch
         ```
         - Starts RealSense `/camera/image_raw`
         - Starts GelSight `/gelsight/image_raw`
         - Starts Hand-E Driver `/hande/command` `/hande/joint_states`
     3. Start Teleoperation
         ```bash
+        # Make sure the script is executable (chmod +x)
+        rosrun tactile_act teleop_gripper.py
+        ```
+        or
+        ```python
         python3 scripts/teleop_gripper.py
         ```
         - Use [SPACE] key to toggle Open/Close
     4. Record Episode
         ```bash
         scripts/record_episode.sh episode_001
-        ```        
+        ```    
+        - Saves data as `.bag` format.    
 
 2. **Data Processing**:
 
-    Convert raw ROS bags into H5 format for training. This script handles synchronization between 1kHz robot states and ~30Hz camera/gelsight.
+    Convert raw ROS1 bags(`.bag`) into H5 format for training. This script handles synchronization between 1kHz robot states and ~30Hz camera/gelsight.
     ```bash
     # Convert single episode
-    python3 scripts/convert_bag_to_hdf5.py --bag data/rosbags/episode_001 --out data/episode_001.h5
+    python3 scripts/convert_bag_to_hdf5.py --bag data/rosbags/episode_001.bag --out data/episode_001.h5
 
     # Verify the converted data (Check images and alignment)
-    python3 scripts/vis_dataset.py --dataset data/dataset.h5
+    python3 scripts/vis_dataset.py --dataset data/episode_001.h5
     ```
 3. **Training**:
 
@@ -90,6 +96,11 @@
 
     Run the trained policy on the real robot.
     ```bash
+    # Ensure 'checkpoint/best_model.pth' and 'data/stats.json' exist
+    rosrun tactile_act inference_node.py
+    ```
+    or
+    ```python
     # Ensure 'checkpoints/best_model.pth' and 'data/stats.json' exist
     python3 inference_node.py
     ```
