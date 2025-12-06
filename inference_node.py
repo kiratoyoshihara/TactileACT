@@ -1,17 +1,16 @@
-import rclpy
-from rclpy.node import Node
+import rospy
 import torch
 import numpy as np
 import json
 import os
-import cv2
+import cv2  
 from sensor_msgs.msg import Image, JointState
 from std_msgs.msg import Float64MultiArray
-from lbr_fri_msgs.msg import LBRState, LBRPositionCommand
-
 from cv_bridge import CvBridge
 from torchvision import transforms
 from PIL import Image as PILImage
+
+from lbr_fri_msgs.msg import LBRState, LBRPositionCommand
 
 from configs.config import Config
 from models.tactile_act import TactileACT
@@ -23,13 +22,12 @@ class TemporalEnsembler:
         self.action_dim = action_dim
         self.device = device
 
-        # cumulative buffer: [Horizon, Action_Dim]
+        # cumulative buffer: [Horizon, Action_DIm]
         self.action_sum = torch.zeros((horizon, action_dim), device=device)
         self.weight_sum = torch.zeros((horizon, 1), device=device)
-
+        
         # Exponential Weighting
         k = 0.01
-        # [Horizon, 1]
         self.weights = torch.exp(-k * torch.arange(horizon, device=device)).unsqueeze(1)
 
     def update(self, new_action_chunk):
@@ -37,53 +35,54 @@ class TemporalEnsembler:
         self.weight_sum += self.weights
 
         current_action = self.action_sum[0] / self.weight_sum[0]
-
+        
         self.action_sum[:-1] = self.action_sum[1:].clone()
         self.action_sum[-1] = 0.0 
-
         self.weight_sum[:-1] = self.weight_sum[1:].clone()
         self.weight_sum[-1] = 0.0
-
+        
         return current_action
 
-class InferenceNode(Node):
+class InferenceNode:
     def __init__(self):
-        super().__init__('tactile_act_inference') # tactile_diffusion_inference
+        rospy.init_node('tactile_act_inference', anonymous=True) # tactile_diffusion_inference
         
         self.cfg = Config()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.get_logger().info(f"Inference device: {self.device}")
+        rospy.loginfo(f"Inference device: {self.device}")
         
+        # Model Load
         if self.cfg.MODEL_TYPE == 'ACT':
             self.model = TactileACT(self.cfg).to(self.device)
         else:
             self.model = TactileDiffusion(self.cfg).to(self.device)
         
-        chunk_size = self.cfg.CHUNK_SIZE
-        action_dim = self.cfg.ACTION_DIM
-
-        self.ensembler = TemporalEnsembler(chunk_size, action_dim, self.device)
-        self.get_logger().info(f"Temporal Ensembling initialized (Horizon: {chunk_size})")
-
+        self.model.eval()
+        
+        # Checkpoint Loading
         ckpt_path = "checkpoints/best_model.pth" 
         if os.path.exists(ckpt_path):
             self.model.load_state_dict(torch.load(ckpt_path, map_location=self.device))
-            self.get_logger().info(f"Loaded weights from {ckpt_path}")
+            rospy.loginfo(f"Loaded weights from {ckpt_path}")
         else:
-            self.get_logger().error(f"Checkpoint not found: {ckpt_path}")
-        
-        self.model.eval()
+            rospy.logwarn(f"Checkpoint not found: {ckpt_path}")
 
-        # Denormalize
+        # Stats Loading
         stats_path = "data/stats.json" 
-        with open(stats_path, 'r') as f:
-            stats = json.load(f)
-        
-        self.qpos_mean = torch.tensor(stats['action_mean'], device=self.device)
-        self.qpos_std = torch.tensor(stats['action_std'], device=self.device)
-        self.get_logger().info("Loaded stats.json for denormalization")
+        if os.path.exists(stats_path):
+            with open(stats_path, 'r') as f:
+                stats = json.load(f)
+            self.qpos_mean = torch.tensor(stats['action_mean'], device=self.device)
+            self.qpos_std = torch.tensor(stats['action_std'], device=self.device)
+            rospy.loginfo("Loaded stats.json")
+        else:
+            rospy.logerr("stats.json not found! Inference will be wrong.")
+            # Dummy to prevent crash
+            self.qpos_mean = torch.zeros(8, device=self.device)
+            self.qpos_std = torch.ones(8, device=self.device)
 
-        # preprocess as training
+        self.ensembler = TemporalEnsembler(self.cfg.CHUNK_SIZE, self.cfg.ACTION_DIM, self.device)
+
         self.transform = transforms.Compose([
             transforms.Resize(self.cfg.IMG_HEIGHT),
             transforms.CenterCrop(self.cfg.IMG_HEIGHT),
@@ -91,159 +90,153 @@ class InferenceNode(Node):
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
 
-        # ROS Setup
         self.bridge = CvBridge()
         
         # Subscribers
-        self.sub_kuka = self.create_subscription(
-            LBRState, 'lbr_state', self.kuka_callback, 1)
-        self.sub_hande = self.create_subscription(
-            JointState, 'hande/joint_states', self.hande_callback, 1)
-        self.sub_vis = self.create_subscription(
-            Image, '/camera/image_raw', self.vis_callback, 1)
-        self.sub_tac = self.create_subscription(
-            Image, '/gelsight/image_raw', self.tac_callback, 1)
+        # KUKA State 
+        rospy.Subscriber('/lbr_state', LBRState, self.kuka_callback)
+        # Hand-E State 
+        rospy.Subscriber('/hande/joint_states', JointState, self.hande_callback)
+        # Vision
+        rospy.Subscriber('/camera/image_raw', Image, self.vis_callback)
+        # Tactile
+        rospy.Subscriber('/gelsight/image_raw', Image, self.tac_callback)
         
         # Publishers
-        self.pub_kuka = self.create_publisher(
-            LBRPositionCommand, '/lbr_command', 1)
-        self.pub_hande = self.create_publisher(
-            Float64MultiArray, '/hande/command', 1)
-        # attention map visualizer
-        self.pub_vis_debug = self.create_publisher(
-            Image, '/debug/attention_map', 1)
-       
-        # Buffers
+        # KUKA Command 
+        self.pub_kuka = rospy.Publisher('/lbr_command', LBRPositionCommand, queue_size=1)
+        # Hand-E Command 
+        self.pub_hande = rospy.Publisher('/hande/command', Float64MultiArray, queue_size=1)
+        # Attention Visualization for debug
+        self.pub_vis_debug = rospy.Publisher('/debug/attention_map', Image, queue_size=1)
+
         self.curr_kuka_qpos = None
         self.curr_hande_qpos = None
         self.curr_vis = None
         self.curr_tac = None
 
-        self.step_cnt = 0     
-        self.vis_interval = 20 # every 1 sec for 20Hz
+        self.step_cnt = 0
+        self.vis_interval = 20 # every 1sec for 20Hz
 
-        # TODO: may need some tuning
-        self.timer = self.create_timer(0.066, self.control_loop) # 15Hz
+        # Control Loop (15Hz)
+        self.rate = rospy.Rate(15)
 
     def kuka_callback(self, msg):
         self.curr_kuka_qpos = np.array(msg.measured_joint_position, dtype=np.float32)
 
     def hande_callback(self, msg):
         if len(msg.position) > 0:
-            self.curr_hande_qpos = np.array([msg.position[0]], dtype=np.float32)     
+            self.curr_hande_qpos = np.array([msg.position[0]], dtype=np.float32)
 
     def vis_callback(self, msg):
-        cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='rgb8')
-        self.curr_vis = PILImage.fromarray(cv_img)
+        try:
+            cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='rgb8')
+            self.curr_vis = PILImage.fromarray(cv_img)
+        except Exception as e:
+            pass
 
     def tac_callback(self, msg):
-        cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='rgb8')
-        self.curr_tac = PILImage.fromarray(cv_img)
+        try:
+            cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='rgb8')
+            self.curr_tac = PILImage.fromarray(cv_img)
+        except Exception as e:
+            pass
+
+    def run(self):
+        rospy.loginfo("Start Control Loop")
+        while not rospy.is_shutdown():
+            self.control_loop()
+            self.rate.sleep()
 
     def control_loop(self):
-        # Wait for ALL sensors
+        # Wait for all data
         if (self.curr_kuka_qpos is None or self.curr_hande_qpos is None or 
             self.curr_vis is None or self.curr_tac is None):
             return
-        
-        curr_qpos = np.concatenate([self.curr_kuka_qpos, self.curr_hande_qpos])
 
-        # Joint State 
+        # Prepare Inputs
+        # Combine KUKA(7) + HandE(1) = 8
+        curr_qpos = np.concatenate([self.curr_kuka_qpos, self.curr_hande_qpos])
+        
         qpos_tensor = torch.from_numpy(curr_qpos).to(self.device)
         qpos_norm = (qpos_tensor - self.qpos_mean) / self.qpos_std
-        qpos_norm = qpos_norm.unsqueeze(0) # Batch dim: [1, 8]
+        qpos_norm = qpos_norm.unsqueeze(0) 
 
-        # Images 
-        vis_tensor = self.transform(self.curr_vis).to(self.device).unsqueeze(0) # [1, 3, 224, 224]
-        tac_tensor = self.transform(self.curr_tac).to(self.device).unsqueeze(0) # [1, 3, 224, 224]
+        vis_tensor = self.transform(self.curr_vis).to(self.device).unsqueeze(0)
+        tac_tensor = self.transform(self.curr_tac).to(self.device).unsqueeze(0)
 
+        # Inference
         with torch.no_grad():
             if self.cfg.MODEL_TYPE == 'ACT':
-                # ACT: [1, Chunk, 8] -> Temporal Aggregation
                 pred_chunk, _, _ = self.model(qpos_norm, vis_tensor, tac_tensor, is_training=False)
                 raw_action_chunk = pred_chunk[0] 
-
+                
                 if (self.step_cnt % self.vis_interval == 0):
                     self.publish_attention_map(vis_tensor, tac_tensor)
-                
-            elif self.cfg.MODEL_TYPE == 'DIFFUSION':
-                # Diffusion: [1, Chunk, 8] -> run 100 times loop
+            else:
                 pred_chunk = self.model.sample(qpos_norm, vis_tensor, tac_tensor)
                 raw_action_chunk = pred_chunk[0]
 
-        # Temporal Aggregation (Update & Smooth)
-        smooth_action_norm = self.ensembler.update(raw_action_chunk) # [8]
+        # Update & Denormalize
+        smooth_action_norm = self.ensembler.update(raw_action_chunk)
         next_action_real = (smooth_action_norm * self.qpos_std) + self.qpos_mean
+        
+        cmd_all = next_action_real.cpu().numpy()
 
-        cmd_all = next_action_real.cpu().numpy() #[8]
+        # KUKA 
+        kuka_cmd = LBRPositionCommand()
+        kuka_cmd.joint_position = cmd_all[:7].tolist()
+        self.pub_kuka.publish(kuka_cmd)
 
-        # Publish (split & publish)
-        # KUKA
-        cmd_kuka = cmd_all[:7]
-        kuka_msg = LBRPositionCommand()
-        kuka_msg.joint_position = cmd_kuka.tolist()
-        self.pub_kuka.publish(kuka_msg)
-
-        # Hand-E
-        cmd_hande = cmd_all[-1]
-        hande_msg = Float64MultiArray()
-        hande_msg.data = cmd_hande.tolist()
-        self.pub_hande.publish(hande_msg)
-
+        # Hand-E 
+        hande_cmd = Float64MultiArray(data=cmd_all[7:].tolist())
+        self.pub_hande.publish(hande_cmd)
+        
         self.step_cnt += 1
 
     def publish_attention_map(self, vis_tensor, tac_tensor):
-            try:
-                # [1, Chunk, Tokens]
-                attn_weights = self.model.get_attention_weights()
-                if attn_weights is None: return
+        try:
+            attn_weights = self.model.get_attention_weights()
+            if attn_weights is None: return
 
-                attn_t0 = attn_weights[0, 0, :].cpu()
-                
-                start_vis = 2
-                end_vis = 2 + 49
-                start_tac = 2 + 49
-                end_tac = 2 + 49 + 49
-                
-                attn_vis = attn_t0[start_vis:end_vis].reshape(7, 7).numpy()
-                attn_tac = attn_t0[start_tac:end_tac].reshape(7, 7).numpy()
+            attn_t0 = attn_weights[0, 0, :].cpu()
+            
+            # Index (Style=1, State=1, Vis=49, Tac=49)
+            start_vis = 2
+            end_vis = 2 + 49
+            start_tac = 2 + 49
+            end_tac = 2 + 49 + 49
+            
+            attn_vis = attn_t0[start_vis:end_vis].reshape(7, 7).numpy()
+            attn_tac = attn_t0[start_tac:end_tac].reshape(7, 7).numpy()
 
-                def make_overlay(img_t, attn_map):
-                    img = img_t.squeeze(0).permute(1, 2, 0).cpu().numpy()
-                    img = (img * 0.229 + 0.485) * 255
-                    img = np.clip(img, 0, 255).astype(np.uint8)
-                    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR) 
-                    
-                    heatmap = cv2.resize(attn_map, (224, 224))
-
-                    heatmap = (heatmap - heatmap.min()) / (heatmap.max() - heatmap.min() + 1e-8)
-                    heatmap = np.uint8(255 * heatmap)
-                    heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
-                    
-                    return cv2.addWeighted(img, 0.6, heatmap, 0.4, 0)
-
-                vis_out = make_overlay(vis_tensor, attn_vis)
-                tac_out = make_overlay(tac_tensor, attn_tac)
+            def make_overlay(img_t, attn_map):
+                img = img_t.squeeze(0).permute(1, 2, 0).cpu().numpy()
+                img = (img * 0.229 + 0.485) * 255
+                img = np.clip(img, 0, 255).astype(np.uint8)
+                img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR) 
                 
-                combined_img = np.hstack([vis_out, tac_out])
+                heatmap = cv2.resize(attn_map, (224, 224))
+                heatmap = (heatmap - heatmap.min()) / (heatmap.max() - heatmap.min() + 1e-8)
+                heatmap = np.uint8(255 * heatmap)
+                heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
                 
-                msg = self.bridge.cv2_to_imgmsg(combined_img, encoding="bgr8")
-                self.pub_vis_debug.publish(msg)
-                
-            except Exception as e:
-                self.get_logger().warn(f"Vis Error: {e}")
+                return cv2.addWeighted(img, 0.6, heatmap, 0.4, 0)
 
-def main(args=None):
-    rclpy.init(args=args)
-    node = InferenceNode()
-    
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        node.destroy_node()
-        rclpy.shutdown()
+            vis_out = make_overlay(vis_tensor, attn_vis)
+            tac_out = make_overlay(tac_tensor, attn_tac)
+            
+            combined_img = np.hstack([vis_out, tac_out])
+            
+            msg = self.bridge.cv2_to_imgmsg(combined_img, encoding="bgr8")
+            self.pub_vis_debug.publish(msg)
+            
+        except Exception as e:
+            rospy.logwarn(f"Vis Error: {e}")
 
 if __name__ == '__main__':
-    main()
+    try:
+        node = InferenceNode()
+        node.run()
+    except rospy.ROSInterruptException:
+        pass
