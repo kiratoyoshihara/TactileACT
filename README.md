@@ -23,7 +23,7 @@
     │   ├── bringup_launch.py      # Master launch file (Sensors + Drivers)
     │   ├── convert_bag_to_hdf5.py # Data processing (rosbag -> hdf5)
     │   ├── hande_driver_node.py   # Hand-E gripper driver
-    │   ├── launch_sensors.py      # Camera & GelSight startup
+    │   ├── sensors.launch      # Camera & GelSight startup
     │   ├── record_episode.sh      # Data collection helper script
     │   ├── teleop_gripper.py      # Keyboard teleop for gripper during data collection
     │   └── vis_dataset.py         # Data verification tool

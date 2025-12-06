@@ -1,0 +1,8 @@
+<launch>
+  <include file="$(find tactile_act)/scripts/sensors.launch" />
+
+  <node name="hande_driver" pkg="tactile_act" type="hande_driver_node.py" output="screen">
+     <param name="device" value="/dev/ttyUSB0"/>
+  </node>
+  
+</launch>
