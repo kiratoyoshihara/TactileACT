@@ -37,7 +37,7 @@
     └── requirements.txt           # Python dependencies
 
 ## 🚀 Workflow
-1. **Hardware Bring-up & Data Collection**
+1. **Hardware Bring-up & Data Collection**:
 
     We collect human demonstration data using Kinesthetic Teaching (gravity compensation mode) for the arm and keyboard teleoperation for the gripper.
     
@@ -64,7 +64,8 @@
         scripts/record_episode.sh episode_001
         ```        
 
-2. **Data Processing**
+2. **Data Processing**:
+
     Convert raw ROS bags into HDF5 format for training. This script handles synchronization between 1kHz robot states and ~30Hz camera/gelsight.
     ```bash
     # Convert single episode
@@ -73,7 +74,8 @@
     # Verify the converted data (Check images and alignment)
     python3 scripts/vis_dataset.py --dataset data/dataset.h5
     ```
-3. **Training**
+3. **Training**:
+
     Train the Tactile-ACT model. The model uses **Dual Encoders** (one for Vision, one for Tactile) and **Modality Dropout** to prevent visual dominance.
     ```bash
     # Edit configs/config.py if needed
@@ -81,7 +83,8 @@
     ```
     - Checkpoints are saved in `checkpoints/`
     - Statistics (mean/std) are saved in `data/stats.json`
-4. **Read-World Inference**
+4. **Read-World Inference**:
+
     Run the trained policy on the real robot.
     ```bash
     # Ensure 'checkpoints/best_model.pth' and 'data/stats.json' exist
@@ -90,15 +93,18 @@
     - The node performs **Temporal Aggregation** for smooth control.
     - Real-time Attention Maps are published to `/debug/attention_map`
 
-## 🔧 Key Features
-- **Dual Encoder Architecture** 
+## ⭐️ Key Features
+- **Dual Encoder Architecture**:
+
     Separate ResNet backbones for RGB and GelSight images to capture global context and local geometry respectively.
-- **Modality Dropout**
+- **Modality Dropout**:
+
     Randomly masks vision tokens during training to force the policy to rely on tactile feedback.
-- **Robust Synchronization**
+- **Robust Synchronization**:
+
     Aligns multi-modal data (1kHz Proprioception, 30Hz Vision, ~15-25Hz Tactile) using the tactile timestamp as the master clock.
 
-## 📦 Dependencies
+## 🔧 Dependencies
 - ROS 2 Humble
 - PyTorch
 - `lbr_fri_ros2_stack` (For KUKA control)
