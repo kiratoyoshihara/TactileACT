@@ -6,7 +6,7 @@
 - **Gripper**: Robotiq Hand-E (1 DoF)
 - **Vision Sensor**: Intel RealSense D435 (RGB)
 - **Tactile Sensor**: GelSight Mini
-- **Environment** Ubuntu 22.04/ROS2 Humble 
+- **Environment** Ubuntu 22.04/ROS Noetic 
 
 ## 📂 Project Structure
     TactileACT/
@@ -92,7 +92,7 @@
     ```
     - Checkpoints are saved in `checkpoints/`
     - Statistics (mean/std) are saved in `data/stats.json`
-4. **Read-World Inference**:
+4. **Real-World Inference**:
 
     Run the trained policy on the real robot.
     ```bash
@@ -121,6 +121,6 @@
 ## 🔧 Dependencies
 - ROS 1 Humble
 - PyTorch
-- `lbr_fri_ros2_stack` (For KUKA control)
+- `lbr_fri_ros_stack` (For KUKA control)
 - `usb_cam` (For camera streaming)
 - Python packages: `h5py` `opencv-python` `rosbags` `matplotlib`
