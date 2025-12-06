@@ -66,7 +66,7 @@
 
 2. **Data Processing**:
 
-    Convert raw ROS bags into HDF5 format for training. This script handles synchronization between 1kHz robot states and ~30Hz camera/gelsight.
+    Convert raw ROS bags into H5 format for training. This script handles synchronization between 1kHz robot states and ~30Hz camera/gelsight.
     ```bash
     # Convert single episode
     python3 scripts/convert_bag_to_hdf5.py --bag data/rosbags/episode_001 --out data/episode_001.h5
@@ -105,7 +105,7 @@
     Aligns multi-modal data (1kHz Proprioception, 30Hz Vision, ~15-25Hz Tactile) using the tactile timestamp as the master clock.
 
 ## 🔧 Dependencies
-- ROS 2 Humble
+- ROS 1 Humble
 - PyTorch
 - `lbr_fri_ros2_stack` (For KUKA control)
 - `usb_cam` (For camera streaming)
