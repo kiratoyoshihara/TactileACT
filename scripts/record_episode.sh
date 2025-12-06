@@ -7,7 +7,11 @@ EPISODE_NAME="$1"
 OUTPUT_DIR="../data/rosbags"
 mkdir -p "$OUTPUT_DIR"
 
-echo "=== START RECORDING (ROS 1) ==="
+echo "=================================================="
+echo "📽️  START RECORDING (ROS1): $EPISODE_NAME"
+echo "📂 Saving to: $OUTPUT_DIR/$EPISODE_NAME"
+echo "Stop with [Ctrl + C]"
+echo "=================================================="
 
 rosbag record -O "${OUTPUT_DIR}/${EPISODE_NAME}.bag" \
     /camera/image_raw \
