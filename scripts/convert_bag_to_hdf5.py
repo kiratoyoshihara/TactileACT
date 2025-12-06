@@ -1,4 +1,3 @@
-# scripts/convert_bag_to_hdf5.py
 import argparse
 import h5py
 import numpy as np
