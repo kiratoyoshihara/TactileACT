@@ -83,7 +83,7 @@
     ```
     - Checkpoints are saved in `checkpoints/`
     - Statistics (mean/std) are saved in `data/stats.json`
-4. **Read-World Inference**:
+4. **Real-World Inference**:
 
     Run the trained policy on the real robot.
     ```bash
