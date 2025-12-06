@@ -30,7 +30,7 @@ class Config:
     LR = 1e-4
     WEIGHT_DECAY = 1e-4 
     NUM_EPOCHS = 100
-    KL_WEIGHT = 0.1  # Beta for CVAE KL Loss
+    KL_WEIGHT = 10  # Beta for CVAE KL Loss
     
     # trick: Modality Dropout
     # Probability of dropping vision to force tactile usage
