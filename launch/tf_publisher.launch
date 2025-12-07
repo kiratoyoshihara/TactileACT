@@ -1,8 +1,8 @@
 <launch>
   <node pkg="tf" type="static_transform_publisher" name="gelsight_tf_broadcaster" 
-        args="0.0 0.0 0.05 0 0 0 flange gelsight_link 100" />
+        args="0.0 0.0 0.05 0 0 0 flange gelsight_link 100" /> <!-- check args -->
 
   <node pkg="tf" type="static_transform_publisher" name="camera_tf_broadcaster" 
-        args="0.5 0.0 0.5 1.57 0 0 link_0 camera_link 100" />
+        args="0.5 0.0 0.5 1.57 0 0 link_0 camera_link 100" /> <!-- check args -->
 
 </launch>
