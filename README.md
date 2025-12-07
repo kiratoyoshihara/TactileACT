@@ -16,7 +16,8 @@
     │   └── dataset.py             # PyTorch Dataset class 
     ├── launch/
     │   ├── bringup.launch         # launch Hand-E driver and sensors
-    │   └── sensors.launch         # launch GelSight/RealSense
+    │   ├── sensors.launch         # launch GelSight/RealSense topic 
+    │   └── tf_publisher.launch    # launch topic for Rviz
     ├── models/
     │   ├── backbones.py           # ResNet encoders (Vision & Tactile)
     │   ├── cvae.py                # CVAE module for action generation
