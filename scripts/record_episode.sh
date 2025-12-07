@@ -14,7 +14,8 @@ echo "Stop with [Ctrl + C]"
 echo "=================================================="
 
 rosbag record -O "${OUTPUT_DIR}/${EPISODE_NAME}.bag" \
-    /camera/image_raw \
+    /camera_top/image_raw \
+    /camera_side/image_raw \
     /gelsight/image_raw \
     /lbr_state \
     /hande/joint_states \
