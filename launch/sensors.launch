@@ -15,6 +15,14 @@
     <param name="camera_frame_id" value="camera_side_link" />
   </node>
 
+  <node name="camera_hand_driver" pkg="usb_cam" type="usb_cam_node" output="screen" ns="camera_hand">
+    <param name="video_device" value="/dev/video8" /> <param name="image_width" value="640" /> <!-- check here -->
+    <param name="image_height" value="480" />
+    <param name="pixel_format" value="yuyv" />
+    <param name="framerate" value="30" />
+    <param name="camera_frame_id" value="camera_hand_link" />
+  </node>
+
   <node name="gelsight_driver" pkg="usb_cam" type="usb_cam_node" output="screen" ns="gelsight">
     <param name="video_device" value="/dev/video4" /> <!-- check here -->
     <param name="image_width" value="640" />
