@@ -6,7 +6,8 @@ import rosbag
 from cv_bridge import CvBridge
 
 TOPICS = {
-    'vision':  '/camera/image_raw',
+    'vis_top':  '/camera_top/image_raw',
+    'vis_side': '/camera_side/image_raw',
     'tactile': '/gelsight/image_raw',
     'kuka':    '/lbr_state',           
     'hande':   '/hande/joint_states',  
@@ -44,7 +45,8 @@ def process_bag(bag_path, output_path):
     
     bridge = CvBridge()
 
-    vision_data = [] 
+    vis_top_data = []
+    vis_side_data = [] 
     tactile_data = []
     
     kuka_times = []
@@ -57,12 +59,19 @@ def process_bag(bag_path, output_path):
         for topic, msg, t in bag.read_messages(topics=list(TOPICS.values())):
             timestamp = msg.header.stamp.to_sec() if hasattr(msg, 'header') else t.to_sec()
 
-            if topic == TOPICS['vision']:
+            if topic == TOPICS['vis_top']:
                 try:
                     cv_image = bridge.imgmsg_to_cv2(msg, desired_encoding="rgb8")
-                    vision_data.append((timestamp, cv_image))
+                    vis_top_data.append((timestamp, cv_image))
                 except Exception as e:
-                    print(f"Error decoding vision image: {e}")
+                    print(f"Error decoding top vision image: {e}")
+
+            elif topic == TOPICS['vis_side']:
+                try:
+                    cv_image = bridge.imgmsg_to_cv2(msg, desired_encoding="rgb8")
+                    vis_side_data.append((timestamp, cv_image))
+                except Exception as e:
+                    print(f"Error decoding side vision image: {e}")
             
             elif topic == TOPICS['tactile']:
                 try:
@@ -93,15 +102,17 @@ def process_bag(bag_path, output_path):
     hande_times = np.array(hande_times)
     hande_values = np.array(hande_values)
 
-    print(f"  Found: Vision={len(vision_data)}, KUKA={len(kuka_values)}, HandE={len(hande_values)}")
-
+    print(f"  Found: TopVis={len(vis_top_data)}, SideVis={len(vis_side_data)}, Tactile={len(tactile_data)}")
+    
     # Synchronization (Master Clock = Tactile)
     final_qpos = []
-    final_vision = []
+    final_vis_top = []
+    final_vis_side = []
     final_tactile = []
     
     # Prepare vision timestamps for search
-    vision_times = [t for t, _ in vision_data]
+    vis_top_times = [t for t, _ in vis_top_data]
+    vis_side_times = [t for t, _ in vis_side_data]
     
     if len(tactile_data) == 0:
         print("Error: No tactile data found.")
@@ -112,11 +123,17 @@ def process_bag(bag_path, output_path):
         t_tac, img_tac = tactile_data[i]
 
         # Find closest Vision image
-        if len(vision_times) > 0:
-            idx_vis = (np.abs(np.array(vision_times) - t_tac)).argmin()
-            _, img_vis = vision_data[idx_vis]
+        if len(vis_top_times) > 0:
+            idx_vis = (np.abs(np.array(vis_top_times) - t_tac)).argmin()
+            _, img_top = vis_top_data[idx_vis]
         else:
-            img_vis = np.zeros_like(img_tac)
+            img_top = np.zeros_like(img_tac)
+
+        if len(vis_side_times) > 0:
+            idx_side = (np.abs(np.array(vis_side_times) - t_tac)).argmin()
+            _, img_side = vis_side_data[idx_side]
+        else:
+            img_side = np.zeros_like(img_tac)
 
         # Interpolate KUKA
         if len(kuka_values) > 0:
@@ -132,7 +149,8 @@ def process_bag(bag_path, output_path):
 
         q_curr = np.concatenate([k_curr, h_curr]) # [8]
 
-        final_vision.append(img_vis)
+        final_vis_top.append(img_top)
+        final_vis_side.append(img_side)
         final_tactile.append(img_tac)
         final_qpos.append(q_curr)
 
@@ -143,13 +161,15 @@ def process_bag(bag_path, output_path):
     final_action[-1] = final_qpos[-1]
 
     # Save
-    final_vision = np.array(final_vision)
+    final_vis_top = np.array(final_vis_top)
+    final_vis_side = np.array(final_vis_side)
     final_tactile = np.array(final_tactile)
 
     with h5py.File(output_path, 'w') as f:
         f.create_dataset('qpos', data=final_qpos)
         f.create_dataset('action', data=final_action)
-        f.create_dataset('vision', data=final_vision, compression="gzip")
+        f.create_dataset('vision_top', data=final_vis_top, compression="gzip")
+        f.create_dataset('vision_side', data=final_vis_side, compression="gzip")
         f.create_dataset('tactile', data=final_tactile, compression="gzip")
         f.attrs['num_samples'] = len(final_qpos)
 
