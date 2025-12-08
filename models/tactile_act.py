@@ -16,8 +16,7 @@ class TactileACT(nn.Module):
 
         # Tactile Backbone (GelSight)
         # Set pretrained=False or use different pretraining for tactile
-        self.tactile_backbone_1 = ResNetBackbone(config.HIDDEN_DIM, pretrained=False)
-        self.tactile_backbone_2 = ResNetBackbone(config.HIDDEN_DIM, pretrained=False)
+        self.tactile_backbone = ResNetBackbone(config.HIDDEN_DIM, pretrained=False)
         
         # CVAE (Training only)
         self.cvae = CVAEEncoder(
@@ -86,8 +85,8 @@ class TactileACT(nn.Module):
         vision_side_tokens = self.vision_backbone_side(img_side) # [B, 49, H]
         vision_hand_tokens = self.vision_backbone_hand(img_hand) # [B, 49, H]
         
-        tactile_1_tokens = self.tactile_backbone_1(tactile_1)      # [B, 49, H]
-        tactile_2_tokens = self.tactile_backbone_2(tactile_2)      # [B, 49, H]
+        tactile_1_tokens = self.tactile_backbone(tactile_1)      # [B, 49, H]
+        tactile_2_tokens = self.tactile_backbone(tactile_2)      # [B, 49, H]
         
         vision_tokens = torch.cat([vision_top_tokens, vision_side_tokens, vision_hand_tokens], dim=1) # [B, 147, H]
         tactile_tokens = torch.cat([tactile_1_tokens, tactile_2_tokens], dim=1)                       # [B, 98, H]
