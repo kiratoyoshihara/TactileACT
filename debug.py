@@ -26,7 +26,8 @@ def verify_tactile_act_dimensions():
     dummy_image_hand = torch.randn(B, 3, cfg.IMG_HEIGHT, cfg.IMG_WIDTH).to(device)
 
     # [B, 3, 224, 224] GelSight
-    dummy_tactile = torch.randn(B, 3, cfg.IMG_HEIGHT, cfg.IMG_WIDTH).to(device)
+    dummy_tactile_1 = torch.randn(B, 3, cfg.IMG_HEIGHT, cfg.IMG_WIDTH).to(device)
+    dummy_tactile_2 = torch.randn(B, 3, cfg.IMG_HEIGHT, cfg.IMG_WIDTH).to(device)
     
     # [B, 100, 8] Action Chunk
     dummy_actions = torch.randn(B, cfg.CHUNK_SIZE, cfg.ACTION_DIM).to(device)
@@ -36,13 +37,14 @@ def verify_tactile_act_dimensions():
     print(f"  image top :  {dummy_image_top.shape}")
     print(f"  image side:  {dummy_image_side.shape}")
     print(f"  image hand:  {dummy_image_hand.shape}")
-    print(f"  tactile   :  {dummy_tactile.shape}")
+    print(f"  tactile1  :  {dummy_tactile_1.shape}")
+    print(f"  tactile2  :  {dummy_tactile_2.shape}")
     print(f"  actions   :  {dummy_actions.shape}")
 
     print("\n[Forward Pass] Running...")
     
     pred_actions, mu, log_var = model(
-        dummy_qpos, dummy_image_top, dummy_image_side, dummy_image_hand, dummy_tactile, actions=dummy_actions, is_training=True
+        dummy_qpos, dummy_image_top, dummy_image_side, dummy_image_hand, dummy_tactile_1, dummy_tactile_2, actions=dummy_actions, is_training=True
     )
 
     print("\n[Output Tensors]")
@@ -66,12 +68,12 @@ def verify_tactile_act_dimensions():
     # Style(1) + State(1) + Vision(49) + Tactile(49) = 100
     # ResNet18 (224x224) -> 7x7 Feature Map -> 49 Tokens
     num_vision_tokens = (cfg.IMG_HEIGHT // 32) * (cfg.IMG_WIDTH // 32) 
-    total_tokens = 1 + 1 + num_vision_tokens * cfg.NUM_CAMERAS + num_vision_tokens
+    total_tokens = 1 + 1 + num_vision_tokens * cfg.NUM_CAMERAS + num_vision_tokens * cfg.NUM_TACTILES
     
     print(f"\n[Internal Token Logic Check]")
     print(f"  Vision Tokens (7x7) : {num_vision_tokens}")
     print(f"  Tactile Tokens (7x7): {num_vision_tokens}")
-    print(f"  Total Encoder Input Tokens: 1(Style) + 1(State) + {num_vision_tokens * cfg.NUM_CAMERAS}(Vision) + {num_vision_tokens}(Tactile) = {total_tokens}")
+    print(f"  Total Encoder Input Tokens: 1(Style) + 1(State) + {num_vision_tokens * cfg.NUM_CAMERAS}(Vision) + {num_vision_tokens * cfg.NUM_TACTILES}(Tactile) = {total_tokens}")
     
     # Check length of Transformer input and Chunk Size
     print(f"  Decoder Output (Chunk Size): {cfg.CHUNK_SIZE}")
@@ -150,4 +152,4 @@ def verify_tactile_diffusion_dimensions():
 
 if __name__ == "__main__":
     verify_tactile_act_dimensions()
-    verify_tactile_diffusion_dimensions()
+    # verify_tactile_diffusion_dimensions()
