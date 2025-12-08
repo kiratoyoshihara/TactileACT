@@ -68,7 +68,13 @@
         python3 scripts/teleop_gripper.py
         ```
         - Use [SPACE] key to toggle Open/Close
-    4. Record Episode
+    4. Check all topics available
+        ```bash
+        rostopic hz /camera_top/image_raw /camera_side/image_raw /camera_hand/image_raw /gelsight/image_raw /hande/joint_states /lbr_state
+        ``` 
+        Make sure all topics are displayed and confirm their FPS are proper.
+
+    5. Record Episode
         ```bash
         scripts/record_episode.sh episode_001
         ```    
