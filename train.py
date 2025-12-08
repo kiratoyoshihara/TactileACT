@@ -76,8 +76,8 @@ def main():
 
 
         avg_val_loss = val_loss_sum / len(val_loader)
-        avg_val_1l = val_l1_sum / len(val_l1_sum)
-        avg_val_kl = val_kl_sum / len(val_kl_sum)
+        avg_val_1l = val_l1_sum / len(val_loader)
+        avg_val_kl = val_kl_sum / len(val_loader)
 
         print(f"Epoch {epoch+1}/{cfg.NUM_EPOCHS} | Train Loss: {avg_train_loss:.4f} L1: {avg_train_l1:.4f} KL: {avg_train_kl:.4f} | Val Loss: {avg_val_loss:.4f} L1: {avg_val_1l:.4f} KL: {avg_val_kl:.4f}")
 
