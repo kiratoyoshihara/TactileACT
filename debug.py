@@ -69,7 +69,7 @@ def verify_tactile_act_dimensions():
     print(f"\n[Internal Token Logic Check]")
     print(f"  Vision Tokens (7x7) : {num_vision_tokens}")
     print(f"  Tactile Tokens (7x7): {num_vision_tokens}")
-    print(f"  Total Encoder Input Tokens: 1(Style) + 1(State) + {num_vision_tokens * cfg.NUM_CAMERAS} + {num_vision_tokens} = {total_tokens}")
+    print(f"  Total Encoder Input Tokens: 1(Style) + 1(State) + {num_vision_tokens * cfg.NUM_CAMERAS}(Vision) + {num_vision_tokens}(Tactile) = {total_tokens}")
     
     # Check length of Transformer input and Chunk Size
     print(f"  Decoder Output (Chunk Size): {cfg.CHUNK_SIZE}")
@@ -148,4 +148,4 @@ def verify_tactile_diffusion_dimensions():
 
 if __name__ == "__main__":
     verify_tactile_act_dimensions()
-    verify_tactile_diffusion_dimensions()
+    # verify_tactile_diffusion_dimensions()
