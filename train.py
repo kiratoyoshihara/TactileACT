@@ -38,11 +38,11 @@ def main():
         train_kl_sum = 0.0
         
         for batch in train_loader:
-            qpos, img, tac, action = [x.to(device) for x in batch]
+            qpos, img_top, img_side, tac, action = [x.to(device) for x in batch]
             
             optimizer.zero_grad()
             
-            pred_actions, mu, log_var = model(qpos, img, tac, actions=action, is_training=True)
+            pred_actions, mu, log_var = model(qpos, img_top, img_side, tac, actions=action, is_training=True)
             
             loss, l1, kl = compute_loss(pred_actions, action, mu, log_var, cfg.KL_WEIGHT)
             
