@@ -2,7 +2,7 @@ class Config:
     # Model define
     MODEL_TYPE = 'ACT' # 'Diffusion'
 
-    NUM_CAMERAS = 2
+    NUM_CAMERAS = 3
     
     # Data dimensions
     # KUKA iiwa (7 joints) + Gripper (1 joint) = 8
