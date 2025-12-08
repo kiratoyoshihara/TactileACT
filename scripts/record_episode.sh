@@ -16,6 +16,7 @@ echo "=================================================="
 rosbag record -O "${OUTPUT_DIR}/${EPISODE_NAME}.bag" \
     /camera_top/image_raw \
     /camera_side/image_raw \
+    /camera_hand/image_raw \
     /gelsight/image_raw \
     /lbr_state \
     /hande/joint_states \
