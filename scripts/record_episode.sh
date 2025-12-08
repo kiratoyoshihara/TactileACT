@@ -17,7 +17,8 @@ rosbag record -O "${OUTPUT_DIR}/${EPISODE_NAME}.bag" \
     /camera_top/image_raw \
     /camera_side/image_raw \
     /camera_hand/image_raw \
-    /gelsight/image_raw \
+    /gelsight_1/image_raw \
+    /gelsight_2/image_raw \
     /lbr_state \
     /hande/joint_states \
     /hande/command \
