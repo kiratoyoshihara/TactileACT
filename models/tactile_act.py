@@ -35,7 +35,7 @@ class TactileACT(nn.Module):
         num_vis_tokens = 49 * config.NUM_CAMERAS
         num_tac_tokens = 49 * config.NUM_TACTILES
         self.pos_embed_vision = nn.Parameter(torch.randn(1, num_vis_tokens, config.HIDDEN_DIM))
-        self.pos_embed_tactile = nn.Parameter(torch.randn(1, num_tac_tokens config.HIDDEN_DIM))
+        self.pos_embed_tactile = nn.Parameter(torch.randn(1, num_tac_tokens, config.HIDDEN_DIM))
         
         # Query Embeddings for the Decoder (Learnable Questions)
         self.query_embed = nn.Embedding(config.CHUNK_SIZE, config.HIDDEN_DIM)
@@ -86,8 +86,8 @@ class TactileACT(nn.Module):
         vision_side_tokens = self.vision_backbone_side(img_side) # [B, 49, H]
         vision_hand_tokens = self.vision_backbone_hand(img_hand) # [B, 49, H]
         
-        tactile_1_tokens = self.tactile_backbone(tactile_1)      # [B, 49, H]
-        tactile_2_tokens = self.tactile_backbone(tactile_2)      # [B, 49, H]
+        tactile_1_tokens = self.tactile_backbone_1(tactile_1)      # [B, 49, H]
+        tactile_2_tokens = self.tactile_backbone_2(tactile_2)      # [B, 49, H]
         
         vision_tokens = torch.cat([vision_top_tokens, vision_side_tokens, vision_hand_tokens], dim=1) # [B, 147, H]
         tactile_tokens = torch.cat([tactile_1_tokens, tactile_2_tokens], dim=1)                       # [B, 98, H]
