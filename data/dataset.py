@@ -31,7 +31,8 @@ class RobotDataset(Dataset):
                     f['vision_top'].shape[0],
                     f['vision_side'].shape[0],
                     f['vision_hand'].shape[0],
-                    f['tactile'].shape[0],
+                    f['tactile_1'].shape[0],
+                    f['tactile_2'].shape[0],
                     f['action'].shape[0]
                 )
                 
@@ -92,7 +93,8 @@ class RobotDataset(Dataset):
             vis_top_raw = f['vision_top'][file_idx]
             vis_side_raw = f['vision_side'][file_idx]
             vis_hand_raw = f['vision_hand'][file_idx]
-            tactile_raw = f['tactile'][file_idx]
+            tactile_1_raw = f['tactile_1'][file_idx]
+            tactile_2_raw = f['tactile_2'][file_idx]
             action_chunk_raw = f['action'][file_idx : file_idx + self.config.CHUNK_SIZE]
 
         qpos = (torch.from_numpy(qpos_raw).float() - self.qpos_mean) / self.qpos_std
@@ -103,6 +105,7 @@ class RobotDataset(Dataset):
         img_top = self.transform(vis_top_raw)
         img_side = self.transform(vis_side_raw)
         img_hand = self.transform(vis_hand_raw)
-        tactile = self.transform(tactile_raw)
+        tactile_1 = self.transform(tactile_1_raw)
+        tactile_2 = self.transform(tactile_2_raw)
         
-        return qpos, img_top, img_side, img_hand, tactile, actions
+        return qpos, img_top, img_side, img_hand, tactile_1, tactile_2, actions
