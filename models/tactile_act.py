@@ -11,7 +11,7 @@ class TactileACT(nn.Module):
         
         # Vision Backbone (Pretrained on ImageNet)
         self.vision_backbone_top = ResNetBackbone(config.HIDDEN_DIM, pretrained=True)
-        self.vision_backbone_side = ResNetBackbone(config.HIDDEN_DIm, pretrained=True)
+        self.vision_backbone_side = ResNetBackbone(config.HIDDEN_DIM, pretrained=True)
 
         # Tactile Backbone (GelSight)
         # Set pretrained=False or use different pretraining for tactile
