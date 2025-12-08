@@ -2,12 +2,12 @@ import torch
 import cv2
 import numpy as np
 
-def visualize_attention(model, qpos, img_top, img_side, tactile, save_path="attention_map.png"):
+def visualize_attention(model, qpos, img_top, img_side, img_hand, tactile, save_path="attention_map.png"):
     model.eval()
     
     with torch.no_grad():
         # Attention weights are saved internally
-        _ = model(qpos, img_top, img_side, tactile, is_training=False)
+        _ = model(qpos, img_top, img_side, img_hand, tactile, is_training=False)
         
         attn_weights = model.get_attention_weights() # [1, Chunk_Size, Total_Tokens]
 
@@ -21,14 +21,20 @@ def visualize_attention(model, qpos, img_top, img_side, tactile, save_path="atte
     start_side = end_top
     end_side = end_top + 49
     
+    # Vision Hand
+    start_hand = end_side
+    end_hand = end_side + 49
+
     # Tactile
-    start_tac = end_side
-    end_tac = end_side + 49
+    start_tac = end_hand
+    end_tac = end_hand + 49
     
     # Reshape flattened tokens back to 7x7 spatial map
     attn_top = attn_t0[start_top:end_top].reshape(7, 7).numpy()
     attn_side = attn_t0[start_side:end_side].reshape(7, 7).numpy()
+    attn_hand = attn_t0[start_hand:end_hand].reshape(7, 7).numpy()
     attn_tac = attn_t0[start_tac:end_tac].reshape(7, 7).numpy()
+
 
     def overlay_heatmap(img_tensor, attn_map):
         if img_tensor.dim() == 4:
@@ -59,9 +65,10 @@ def visualize_attention(model, qpos, img_top, img_side, tactile, save_path="atte
 
     overlay_top = overlay_heatmap(img_top, attn_top)
     overlay_side = overlay_heatmap(img_side, attn_side)
+    overlay_hand = overlay_heatmap(img_hand, attn_hand)
     overlay_tac = overlay_heatmap(tactile, attn_tac)
     
-    combined = np.hstack([overlay_top, overlay_side, overlay_tac])
+    combined = np.hstack([overlay_top, overlay_side, overlay_hand, overlay_tac])
     
     # Save image
     cv2.imwrite(save_path, combined)
