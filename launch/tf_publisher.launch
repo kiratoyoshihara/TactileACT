@@ -1,6 +1,9 @@
 <launch>
-  <node pkg="tf" type="static_transform_publisher" name="gelsight_tf" 
-        args="0.0 0.0 0.05 0 0 0 flange gelsight_link 100" /> <!-- check args-->
+  <node pkg="tf" type="static_transform_publisher" name="gelsight_1_tf" 
+        args="0.0 0.02 0.05 0 0 0 flange gelsight_1_link 100" />     <!-- check args-->
+  
+  <node pkg="tf" type="static_transform_publisher" name="gelsight_2_tf" 
+        args="0.0 -0.02 0.05 0 0 0 flange gelsight_2_link 100" />    <!-- check args-->
 
   <node pkg="tf" type="static_transform_publisher" name="cam_top_tf" 
         args="0.5 0.0 0.5 1.57 0 0 link_0 camera_top_link 100" /> <!-- check args-->
