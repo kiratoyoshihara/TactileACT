@@ -16,7 +16,8 @@ class TactileACT(nn.Module):
 
         # Tactile Backbone (GelSight)
         # Set pretrained=False or use different pretraining for tactile
-        self.tactile_backbone = ResNetBackbone(config.HIDDEN_DIM, pretrained=False)
+        self.tactile_backbone_1 = ResNetBackbone(config.HIDDEN_DIM, pretrained=False)
+        self.tactile_backbone_2 = ResNetBackbone(config.HIDDEN_DIM, pretrained=False)
         
         # CVAE (Training only)
         self.cvae = CVAEEncoder(
@@ -32,8 +33,9 @@ class TactileACT(nn.Module):
         # Learnable Positional Encodings for image tokens (simplified 2D PE)
         # Assuming 224x224 image -> 7x7 grid -> 49 tokens
         num_vis_tokens = 49 * config.NUM_CAMERAS
+        num_tac_tokens = 49 * config.NUM_TACTILES
         self.pos_embed_vision = nn.Parameter(torch.randn(1, num_vis_tokens, config.HIDDEN_DIM))
-        self.pos_embed_tactile = nn.Parameter(torch.randn(1, 49, config.HIDDEN_DIM))
+        self.pos_embed_tactile = nn.Parameter(torch.randn(1, num_tac_tokens config.HIDDEN_DIM))
         
         # Query Embeddings for the Decoder (Learnable Questions)
         self.query_embed = nn.Embedding(config.CHUNK_SIZE, config.HIDDEN_DIM)
@@ -51,13 +53,14 @@ class TactileACT(nn.Module):
         # Output Head 
         self.action_head = nn.Linear(config.HIDDEN_DIM, config.ACTION_DIM)
 
-    def forward(self, qpos, img_top, img_side, img_hand, tactile, actions=None, is_training=True):
+    def forward(self, qpos, img_top, img_side, img_hand, tactile_1, tactile_2, actions=None, is_training=True):
         """
         qpos: [B, 8]
         img_top: [B, 3, 224, 224] (External Camera Top view)
         img_side: [B, 3, 224, 224] (External Camera Side view)
         img_hand: [B, 3, 224, 224] (External Camera Hand view)
-        tactile: [B, 3, 224, 224] (GelSight)
+        tactile_1: [B, 3, 224, 224] (GelSight1)
+        tactile_2: [B, 3, 224, 224] (GelSight2)
         actions: [B, 100, 8] (Ground Truth, needed for training)
         is_training: bool flag
         """
@@ -82,9 +85,12 @@ class TactileACT(nn.Module):
         vision_top_tokens = self.vision_backbone_top(img_top)    # [B, 49, H]
         vision_side_tokens = self.vision_backbone_side(img_side) # [B, 49, H]
         vision_hand_tokens = self.vision_backbone_hand(img_hand) # [B, 49, H]
-        tactile_tokens = self.tactile_backbone(tactile)          # [B, 49, H]
+        
+        tactile_1_tokens = self.tactile_backbone(tactile_1)      # [B, 49, H]
+        tactile_2_tokens = self.tactile_backbone(tactile_2)      # [B, 49, H]
         
         vision_tokens = torch.cat([vision_top_tokens, vision_side_tokens, vision_hand_tokens], dim=1) # [B, 147, H]
+        tactile_tokens = torch.cat([tactile_1_tokens, tactile_2_tokens], dim=1)                       # [B, 98, H]
 
         # Modality Dropout
         # Randomly mask vision tokens during training to force tactile attention
@@ -98,8 +104,8 @@ class TactileACT(nn.Module):
         tactile_tokens = tactile_tokens + self.pos_embed_tactile
         
         # Concatenate All Inputs 
-        # Sequence: [Style, State, Vision_top(49), Vision_side(49), Vision_hand(49), Tactile(49)]
-        # Total length: 1 + 1 + 49 + 49 + 49 + 49 = 198 tokens
+        # Sequence: [Style, State, Vision_top(49), Vision_side(49), Vision_hand(49), Tactile1(49), Tactile2(49)]
+        # Total length: 1 + 1 + 49 + 49 + 49 + 49 + 49 = 247 tokens
         encoder_input = torch.cat([style_token, state_token, vision_tokens, tactile_tokens], dim=1)
 
         # prep for transformer decoder input
