@@ -120,7 +120,7 @@ def process_bag(bag_path, output_path):
     hande_times = np.array(hande_times)
     hande_values = np.array(hande_values)
 
-    print(f"  Found: TopVis={len(vis_top_data)}, SideVis={len(vis_side_data)}, HandVis={len(vis_hand_data)}, Tactile={len(tactile_data)}")
+    print(f"  Found: TopVis={len(vis_top_data)}, SideVis={len(vis_side_data)}, HandVis={len(vis_hand_data)}, Tactile1={len(tactile_1_data)}, Tactile2={len(tactile_2_data)}")
     
     # Synchronization (Master Clock = Tactile)
     final_qpos = []
