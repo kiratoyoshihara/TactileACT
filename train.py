@@ -38,11 +38,11 @@ def main():
         train_kl_sum = 0.0
         
         for batch in train_loader:
-            qpos, img_top, img_side, img_hand, tac, action = [x.to(device) for x in batch]
+            qpos, img_top, img_side, img_hand, tac_1, tac_2, action = [x.to(device) for x in batch]
             
             optimizer.zero_grad()
             
-            pred_actions, mu, log_var = model(qpos, img_top, img_side, img_hand, tac, actions=action, is_training=True)
+            pred_actions, mu, log_var = model(qpos, img_top, img_side, img_hand, tac_1, tac_2, actions=action, is_training=True)
             
             loss, l1, kl = compute_loss(pred_actions, action, mu, log_var, cfg.KL_WEIGHT)
             
@@ -64,9 +64,9 @@ def main():
         
         with torch.no_grad():
             for batch in val_loader:
-                qpos, img_top, img_side, img_hand, tac, action = [x.to(device) for x in batch]
+                qpos, img_top, img_side, img_hand, tac_1, tac_2, action = [x.to(device) for x in batch]
                 
-                pred_actions, mu, log_var = model(qpos, img_top, img_side, img_hand, tac, actions=action, is_training=True)
+                pred_actions, mu, log_var = model(qpos, img_top, img_side, img_hand, tac_1, tac_2, actions=action, is_training=True)
                 
                 loss, l1, kl = compute_loss(pred_actions, action, mu, log_var, cfg.KL_WEIGHT)
                 
