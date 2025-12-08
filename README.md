@@ -69,13 +69,18 @@
         python3 scripts/teleop_gripper.py
         ```
         - Use [SPACE] key to toggle Open/Close
-    4. Check all topics available
+    4. Start Teaching Mode (Arm Follower)
+        To perform Kinesthetic Teaching in Impedance Mode without spring-back effect:
+        ```bash
+        python3 scripts/teach_mode.py
+        ```
+    5. Check all topics available
         ```bash
         rostopic hz /camera_top/image_raw /camera_side/image_raw /camera_hand/image_raw /gelsight/image_raw /hande/joint_states /lbr_state
         ``` 
         Make sure all topics are displayed and confirm their FPS are proper.
 
-    5. Record Episode
+    6. Record Episode
         ```bash
         scripts/record_episode.sh episode_001
         ```    
