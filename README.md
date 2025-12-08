@@ -55,7 +55,7 @@
         ```bash
         roslaunch tactile_act bringup.launch
         ```
-        - Starts RealSense `/camera/image_raw`
+        - Starts RealSense `/camera_top/image_raw`, `/camera_side/image_raw`
         - Starts GelSight `/gelsight/image_raw`
         - Starts Hand-E Driver `/hande/command` `/hande/joint_states`
     3. Start Teleoperation
