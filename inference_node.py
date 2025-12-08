@@ -102,8 +102,8 @@ class InferenceNode:
         rospy.Subscriber('/camera_side/image_raw', Image, self.vis_side_callback)
         rospy.Subscriber('/camera_hand/image_raw', Image, self.vis_hand_callback)
         # Tactile
-        rospy.Subscriber('/gelsight/image_raw', Image, self.tac_callback)
-        
+        rospy.Subscriber('/gelsight_1/image_raw', Image, self.tac_1_callback)
+        rospy.Subscriber('/gelsight_2/image_raw', Image, self.tac_2_callback)
         # Publishers
         # KUKA Command 
         self.pub_kuka = rospy.Publisher('/lbr_command', LBRPositionCommand, queue_size=1)
@@ -119,7 +119,8 @@ class InferenceNode:
         self.curr_vis_side = None
         self.curr_vis_hand = None
 
-        self.curr_tac = None
+        self.curr_tac_1 = None
+        self.curr_tac_2 = None
 
         self.step_cnt = 0
         self.vis_interval = 20 # every 1sec for 20Hz
@@ -155,10 +156,17 @@ class InferenceNode:
         except Exception as e:
             pass
 
-    def tac_callback(self, msg):
+    def tac_1_callback(self, msg):
         try:
             cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='rgb8')
-            self.curr_tac = PILImage.fromarray(cv_img)
+            self.curr_tac_1 = PILImage.fromarray(cv_img)
+        except Exception as e:
+            pass
+
+    def tac_2_callback(self, msg):
+        try: 
+            cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='rgb8')
+            self.curr_tac_2 = PILImage.fromarray(cv_img)
         except Exception as e:
             pass
 
@@ -171,8 +179,8 @@ class InferenceNode:
     def control_loop(self):
         # Wait for all data
         if (self.curr_kuka_qpos is None or self.curr_hande_qpos is None or 
-            self.curr_vis_top is None or self.curr_vis_side is None or 
-            self.curr_vis_hand is None or self.curr_tac is None):
+            self.curr_vis_top is None or self.curr_vis_side is None or self.curr_vis_hand is None or 
+            self.curr_tac_1 is None or self.curr_tac_2 is None):
             return
 
         # Prepare Inputs
@@ -186,16 +194,18 @@ class InferenceNode:
         vis_top_tensor = self.transform(self.curr_vis_top).to(self.device).unsqueeze(0)
         vis_side_tensor = self.transform(self.curr_vis_side).to(self.device).unsqueeze(0)
         vis_hand_tensor = self.transform(self.curr_vis_hand).to(self.device).unsqueeze(0)
-        tac_tensor = self.transform(self.curr_tac).to(self.device).unsqueeze(0)
-
+        
+        tac_1_tensor = self.transform(self.curr_tac_1).to(self.device).unsqueeze(0)
+        tac_2_tensor = self.transform(self.curr_tac_2).to(self.device).unsqueeze(0) 
+       
         # Inference
         with torch.no_grad():
             if self.cfg.MODEL_TYPE == 'ACT':
-                pred_chunk, _, _ = self.model(qpos_norm, vis_top_tensor, vis_side_tensor, vis_hand_tensor, tac_tensor, is_training=False)
+                pred_chunk, _, _ = self.model(qpos_norm, vis_top_tensor, vis_side_tensor, vis_hand_tensor, tac_1_tensor, tac_2_tensor, is_training=False)
                 raw_action_chunk = pred_chunk[0] 
                 
                 if (self.step_cnt % self.vis_interval == 0):
-                    self.publish_attention_map(vis_top_tensor, vis_side_tensor, vis_hand_tensor, tac_tensor)
+                    self.publish_attention_map(vis_top_tensor, vis_side_tensor, vis_hand_tensor, tac_1_tensor, tac_2_tensor)
             else:
                 pred_chunk = self.model.sample(qpos_norm, vis_tensor, tac_tensor) # TODO: modify Diffusion model to handle multi-view input
                 raw_action_chunk = pred_chunk[0]
@@ -217,14 +227,14 @@ class InferenceNode:
         
         self.step_cnt += 1
 
-    def publish_attention_map(self, vis_top_tensor, vis_side_tensor, vis_hand_tensor, tac_tensor):
+    def publish_attention_map(self, vis_top_tensor, vis_side_tensor, vis_hand_tensor, tac_1_tensor, tac_2_tensor):
         try:
             attn_weights = self.model.get_attention_weights()
             if attn_weights is None: return
 
             attn_t0 = attn_weights[0, 0, :].cpu()
             
-            # Index (Style=1, State=1, Top=49, Side=49, Hand=49, Tac=49)
+            # Index (Style=1, State=1, Top=49, Side=49, Hand=49, Tac1=49, Tac2=49)
             start_top = 2
             end_top = 2 + 49
             
@@ -232,15 +242,19 @@ class InferenceNode:
             end_side = end_top + 49
 
             start_hand = end_side
-            end_hand = start_hand + 49
+            end_hand = end_side + 49
 
-            start_tac = end_side
-            end_tac = end_side + 49
+            start_tac_1 = end_hand
+            end_tac_1 = end_hand + 49
+
+            start_tac_2 = end_tac_1
+            end_tac_2 = end_tac_1 + 49
             
             attn_vis_top = attn_t0[start_top:end_top].reshape(7, 7).numpy()
             attn_vis_side = attn_t0[start_side:end_side].reshape(7, 7).numpy()
             attn_vis_hand = attn_t0[start_hand:end_hand].reshape(7, 7).numpy()
-            attn_tac = attn_t0[start_tac:end_tac].reshape(7, 7).numpy()
+            attn_tac_1 = attn_t0[start_tac_1:end_tac_1].reshape(7, 7).numpy()
+            attn_tac_2 = attn_t0[start_tac_2:end_tac_2].reshape(7, 7).numpy()
 
             def make_overlay(img_t, attn_map):
                 img = img_t.squeeze(0).permute(1, 2, 0).cpu().numpy()
@@ -258,9 +272,10 @@ class InferenceNode:
             vis_top_out = make_overlay(vis_top_tensor, attn_vis_top)
             vis_side_out = make_overlay(vis_side_tensor, attn_vis_side)
             vis_hand_out = make_overlay(vis_hand_tensor, attn_vis_hand)
-            tac_out = make_overlay(tac_tensor, attn_tac)
-            
-            combined_img = np.hstack([vis_top_out, vis_side_out, vis_hand_out, tac_out])
+            tac_1_out = make_overlay(tac_1_tensor, attn_tac_1)
+            tac_2_out = make_overlay(tac_2_tensor, attn_tac_2)
+
+            combined_img = np.hstack([vis_top_out, vis_side_out, vis_hand_out, tac_1_out, tac_2_out])
             
             msg = self.bridge.cv2_to_imgmsg(combined_img, encoding="bgr8")
             self.pub_vis_debug.publish(msg)
