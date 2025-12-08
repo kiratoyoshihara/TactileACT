@@ -98,7 +98,8 @@ class InferenceNode:
         # Hand-E State 
         rospy.Subscriber('/hande/joint_states', JointState, self.hande_callback)
         # Vision
-        rospy.Subscriber('/camera/image_raw', Image, self.vis_callback)
+        rospy.Subscriber('/camera_top/image_raw', Image, self.vis_top_callback)
+        rospy.Subscriber('/camera_side/image_raw', Image, self.vis_side_callback)
         # Tactile
         rospy.Subscriber('/gelsight/image_raw', Image, self.tac_callback)
         
@@ -112,7 +113,8 @@ class InferenceNode:
 
         self.curr_kuka_qpos = None
         self.curr_hande_qpos = None
-        self.curr_vis = None
+        self.curr_vis_top = None
+        self.curr_vis_die = None
         self.curr_tac = None
 
         self.step_cnt = 0
@@ -128,10 +130,17 @@ class InferenceNode:
         if len(msg.position) > 0:
             self.curr_hande_qpos = np.array([msg.position[0]], dtype=np.float32)
 
-    def vis_callback(self, msg):
+    def vis_top_callback(self, msg):
         try:
             cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='rgb8')
-            self.curr_vis = PILImage.fromarray(cv_img)
+            self.curr_vis_top = PILImage.fromarray(cv_img)
+        except Exception as e:
+            pass
+
+    def vis_side_callback(self, msg):
+        try:
+            cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='rgb8')
+            self.curr_vis_side = PILImage.fromarray(cv_img)
         except Exception as e:
             pass
 
@@ -151,7 +160,7 @@ class InferenceNode:
     def control_loop(self):
         # Wait for all data
         if (self.curr_kuka_qpos is None or self.curr_hande_qpos is None or 
-            self.curr_vis is None or self.curr_tac is None):
+            self.curr_vis_top is None or self.curr_vis_side is None or self.curr_tac is None):
             return
 
         # Prepare Inputs
@@ -162,19 +171,20 @@ class InferenceNode:
         qpos_norm = (qpos_tensor - self.qpos_mean) / self.qpos_std
         qpos_norm = qpos_norm.unsqueeze(0) 
 
-        vis_tensor = self.transform(self.curr_vis).to(self.device).unsqueeze(0)
+        vis_top_tensor = self.transform(self.curr_vis_top).to(self.device).unsqueeze(0)
+        vis_side_tensor = self.transform(self.curr_vis_side).to(self.device).unsqueeze(0)
         tac_tensor = self.transform(self.curr_tac).to(self.device).unsqueeze(0)
 
         # Inference
         with torch.no_grad():
             if self.cfg.MODEL_TYPE == 'ACT':
-                pred_chunk, _, _ = self.model(qpos_norm, vis_tensor, tac_tensor, is_training=False)
+                pred_chunk, _, _ = self.model(qpos_norm, vis_top_tensor, vis_side_tensor, tac_tensor, is_training=False)
                 raw_action_chunk = pred_chunk[0] 
                 
                 if (self.step_cnt % self.vis_interval == 0):
-                    self.publish_attention_map(vis_tensor, tac_tensor)
+                    self.publish_attention_map(vis_top_tensor, vis_side_tensor, tac_tensor)
             else:
-                pred_chunk = self.model.sample(qpos_norm, vis_tensor, tac_tensor)
+                pred_chunk = self.model.sample(qpos_norm, vis_tensor, tac_tensor) # TODO: modify Diffusion model to handle multi-view input
                 raw_action_chunk = pred_chunk[0]
 
         # Update & Denormalize
@@ -194,20 +204,23 @@ class InferenceNode:
         
         self.step_cnt += 1
 
-    def publish_attention_map(self, vis_tensor, tac_tensor):
+    def publish_attention_map(self, vis_top_tensor, vis_side_tensor, tac_tensor):
         try:
             attn_weights = self.model.get_attention_weights()
             if attn_weights is None: return
 
             attn_t0 = attn_weights[0, 0, :].cpu()
             
-            # Index (Style=1, State=1, Vis=49, Tac=49)
-            start_vis = 2
-            end_vis = 2 + 49
-            start_tac = 2 + 49
-            end_tac = 2 + 49 + 49
+            # Index (Style=1, State=1, Top=49, Side=49, Tac=49)
+            start_top = 2
+            end_top = 2 + 49
+            start_side = end_top
+            end_side = end_top + 49
+            start_tac = end_side
+            end_tac = end_side + 49
             
-            attn_vis = attn_t0[start_vis:end_vis].reshape(7, 7).numpy()
+            attn_vis_top = attn_t0[start_top:end_top].reshape(7, 7).numpy()
+            attn_vis_side = attn_t0[start_side:end_side].reshape(7, 7).numpy()
             attn_tac = attn_t0[start_tac:end_tac].reshape(7, 7).numpy()
 
             def make_overlay(img_t, attn_map):
@@ -223,10 +236,11 @@ class InferenceNode:
                 
                 return cv2.addWeighted(img, 0.6, heatmap, 0.4, 0)
 
-            vis_out = make_overlay(vis_tensor, attn_vis)
+            vis_top_out = make_overlay(vis_top_tensor, attn_vis_top)
+            vis_side_out = make_overlay(vis_side_tensor, attn_vis_side)
             tac_out = make_overlay(tac_tensor, attn_tac)
             
-            combined_img = np.hstack([vis_out, tac_out])
+            combined_img = np.hstack([vis_top_out, vis_side_out, tac_out])
             
             msg = self.bridge.cv2_to_imgmsg(combined_img, encoding="bgr8")
             self.pub_vis_debug.publish(msg)
