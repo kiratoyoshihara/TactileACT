@@ -1,7 +1,6 @@
 import argparse
 import h5py
 import numpy as np
-import cv2
 import rosbag
 from cv_bridge import CvBridge
 
