@@ -8,7 +8,8 @@ TOPICS = {
     'vis_top':  '/camera_top/image_raw',
     'vis_side': '/camera_side/image_raw',
     'vis_hand': '/camera_hand/image',
-    'tactile': '/gelsight/image_raw',
+    'tactile_1': '/gelsight_1/image_raw',
+    'tactile_2': '/gelsight_2/image_raw',
     'kuka':    '/lbr_state',          # TODO: check here
     'hande':   '/hande/joint_states',  
 }
@@ -48,8 +49,10 @@ def process_bag(bag_path, output_path):
     vis_top_data = []
     vis_side_data = [] 
     vis_hand_data = []
-    tactile_data = []
-    
+
+    tactile_1_data = []
+    tactile_2_data = []
+
     kuka_times = []
     kuka_values = []
     
@@ -81,12 +84,19 @@ def process_bag(bag_path, output_path):
                 except Exception as e:
                     print(f"Error decoding side vision image: {e}")
             
-            elif topic == TOPICS['tactile']:
+            elif topic == TOPICS['tactile_1']:
                 try:
                     cv_image = bridge.imgmsg_to_cv2(msg, desired_encoding="rgb8")
-                    tactile_data.append((timestamp, cv_image))
+                    tactile_1_data.append((timestamp, cv_image))
                 except Exception as e:
-                    print(f"Error decoding tactile image: {e}")
+                    print(f"Error decoding tactile_1 image: {e}")
+
+            elif topic == TOPICS['tactile_2']:
+                try:
+                    cv_image = bridge.imgmsg_to_cv2(msg, desired_encoding="rgb8")
+                    tactile_2_data.append((timestamp, cv_image))
+                except Exception as e:
+                    print(f"Error decoding tactile_2 image: {e}")
                 
             elif topic == TOPICS['kuka']:
                 if hasattr(msg, 'measured_joint_position'):
@@ -117,20 +127,24 @@ def process_bag(bag_path, output_path):
     final_vis_top = []
     final_vis_side = []
     final_vis_hand = []
-    final_tactile = []
-    
+    final_tactile_1 = []
+    final_tactile_2 = []
+
     # Prepare vision timestamps for search
     vis_top_times = [t for t, _ in vis_top_data]
     vis_side_times = [t for t, _ in vis_side_data]
     vis_hand_times = [t for t, _ in vis_hand_data]
+
+    # prep for tactile 2 timestamps
+    tactile_2_times = [t for t, _ in tactile_2_data]
     
-    if len(tactile_data) == 0:
+    if len(tactile_1_data) == 0 or len(tactile_2_data) == 0:
         print("Error: No tactile data found.")
         return
 
-    # Loop based on Tactile (approx 15-20Hz)
-    for i in range(len(tactile_data)):
-        t_tac, img_tac = tactile_data[i]
+    # Loop based on Tactile_1 (approx 15-20Hz)
+    for i in range(len(tactile_1_data)):
+        t_tac, img_tac = tactile_1_data[i]
 
         # Find closest Vision image
         if len(vis_top_times) > 0:
@@ -151,6 +165,12 @@ def process_bag(bag_path, output_path):
         else:
             img_hand = np.zeros_like(img_tac)
 
+        if len(tactile_2_times) > 0:
+            idx_tactile_2 = (np.abs(np.array(tactile_2_times) - t_tac)).argmin()
+            _, img_tactile_2 = tactile_2_data[idx_tactile_2]
+        else:
+            img_tactile_2 = np.zeros_like(img_tac)
+        
         # Interpolate KUKA
         if len(kuka_values) > 0:
             k_curr = interpolate_data(t_tac, kuka_times, kuka_values)
@@ -168,7 +188,10 @@ def process_bag(bag_path, output_path):
         final_vis_top.append(img_top)
         final_vis_side.append(img_side)
         final_vis_hand.append(img_hand)
-        final_tactile.append(img_tac)
+
+        final_tactile_1.append(img_tac)
+        final_tactile_2.append(img_tactile_2)
+
         final_qpos.append(q_curr)
 
     # Create Actions
@@ -181,7 +204,8 @@ def process_bag(bag_path, output_path):
     final_vis_top = np.array(final_vis_top)
     final_vis_side = np.array(final_vis_side)
     final_vis_hand = np.array(final_vis_hand)
-    final_tactile = np.array(final_tactile)
+    final_tactile_1 = np.array(final_tactile_1)
+    final_tactile_2 = np.array(final_tactile_2)
 
     with h5py.File(output_path, 'w') as f:
         f.create_dataset('qpos', data=final_qpos)
@@ -189,7 +213,8 @@ def process_bag(bag_path, output_path):
         f.create_dataset('vision_top', data=final_vis_top, compression="gzip")
         f.create_dataset('vision_side', data=final_vis_side, compression="gzip")
         f.create_dataset('vision_hand', data=final_vis_hand, compression="gzip")
-        f.create_dataset('tactile', data=final_tactile, compression="gzip")
+        f.create_dataset('tactile_1', data=final_tactile_1, compression="gzip")
+        f.create_dataset('tactile_2', data=final_tactile_2, compression="gzip")
         f.attrs['num_samples'] = len(final_qpos)
 
     print(f"Saved to {output_path}")
