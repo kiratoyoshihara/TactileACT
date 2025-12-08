@@ -23,6 +23,7 @@ def verify_tactile_act_dimensions():
     # [B, 3, 224, 224] (Normalized)
     dummy_image_top = torch.randn(B, 3, cfg.IMG_HEIGHT, cfg.IMG_WIDTH).to(device)
     dummy_image_side = torch.randn(B, 3, cfg.IMG_HEIGHT, cfg.IMG_WIDTH).to(device)
+    dummy_image_hand = torch.randn(B, 3, cfg.IMG_HEIGHT, cfg.IMG_WIDTH).to(device)
 
     # [B, 3, 224, 224] GelSight
     dummy_tactile = torch.randn(B, 3, cfg.IMG_HEIGHT, cfg.IMG_WIDTH).to(device)
@@ -34,13 +35,14 @@ def verify_tactile_act_dimensions():
     print(f"  qpos      :  {dummy_qpos.shape}")
     print(f"  image top :  {dummy_image_top.shape}")
     print(f"  image side:  {dummy_image_side.shape}")
+    print(f"  image hand:  {dummy_image_hand.shape}")
     print(f"  tactile   :  {dummy_tactile.shape}")
     print(f"  actions   :  {dummy_actions.shape}")
 
     print("\n[Forward Pass] Running...")
     
     pred_actions, mu, log_var = model(
-        dummy_qpos, dummy_image_top, dummy_image_side, dummy_tactile, actions=dummy_actions, is_training=True
+        dummy_qpos, dummy_image_top, dummy_image_side, dummy_image_hand, dummy_tactile, actions=dummy_actions, is_training=True
     )
 
     print("\n[Output Tensors]")
@@ -148,4 +150,4 @@ def verify_tactile_diffusion_dimensions():
 
 if __name__ == "__main__":
     verify_tactile_act_dimensions()
-    # verify_tactile_diffusion_dimensions()
+    verify_tactile_diffusion_dimensions()
