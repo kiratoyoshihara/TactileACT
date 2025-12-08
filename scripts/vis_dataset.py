@@ -9,12 +9,14 @@ def visualize_dataset(dataset_path):
     with h5py.File(dataset_path, 'r') as f:
         qpos = f['qpos'][:]
         action = f['action'][:]
-        vision = f['vision'][:]
+        vision_top = f['vision_top'][:]
+        vision_side = f['vision_side'][:]
         tactile = f['tactile'][:]
         num_samples = f.attrs['num_samples']
         
     print(f"Loaded {num_samples} samples.")
-    print(f"Vision Shape: {vision.shape}")
+    print(f"Vision Top Shape: {vision_top.shape}")
+    print(f"Vision Side Shape: {vision_side.shape}")
     print(f"Tactile Shape: {tactile.shape}")
     print(f"Qpos Shape: {qpos.shape}")
     
@@ -22,15 +24,11 @@ def visualize_dataset(dataset_path):
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
     
     for i in range(num_samples):
-        img_vis = cv2.cvtColor(vision[i], cv2.COLOR_RGB2BGR)
+        img_top = cv2.cvtColor(vision_top[i], cv2.COLOR_RGB2BGR)
+        img_side = cv2.cvtColor(vision_side[i], cv2.COLOR_RGB2BGR)
         img_tac = cv2.cvtColor(tactile[i], cv2.COLOR_RGB2BGR)
-    
-        if img_vis.shape[0] != img_tac.shape[0]:
-            h = img_vis.shape[0]
-            w = int(img_tac.shape[1] * (h / img_tac.shape[0]))
-            img_tac = cv2.resize(img_tac, (w, h))
             
-        combined_img = np.hstack([img_vis, img_tac])
+        combined_img = np.hstack([img_top, img_side, img_tac])
         
         # KUKA (0-6), Hand-E (7)
         kuka_pos = qpos[i, :7]
@@ -52,6 +50,14 @@ def visualize_dataset(dataset_path):
         for j, text in enumerate(texts):
             y_pos = 30 + (j * line_height)
             cv2.putText(combined_img, text, (10, y_pos), font, scale, color, thickness)
+
+        cv2.imshow(window_name, combined_img)
+        
+        target_h = img_top.shape[0]
+        label_y = target_h - 15
+        cv2.putText(combined_img, "Top View", (10, label_y), font, 0.7, (0, 255, 255), 2)
+        cv2.putText(combined_img, "Side View", (img_top.shape[1] + 10, label_y), font, 0.7, (0, 255, 255), 2)
+        cv2.putText(combined_img, "Tactile", (img_top.shape[1] + img_side.shape[1] + 10, label_y), font, 0.7, (0, 255, 255), 2)
 
         cv2.imshow(window_name, combined_img)
         
