@@ -28,7 +28,8 @@ class RobotDataset(Dataset):
             with h5py.File(path, 'r') as f:
                 curr_len = min(
                     f['qpos'].shape[0],
-                    f['vision'].shape[0],
+                    f['vis_top'].shape[0],
+                    f['vis_side'].shape[0],
                     f['tactile'].shape[0],
                     f['action'].shape[0]
                 )
@@ -87,7 +88,8 @@ class RobotDataset(Dataset):
 
         with h5py.File(file_path, 'r') as f:
             qpos_raw = f['qpos'][file_idx]
-            vision_raw = f['vision'][file_idx]
+            vis_top_raw = f['vis_top'][file_idx]
+            vis_side_raw = f['vis_side'][file_idx]
             tactile_raw = f['tactile'][file_idx]
             action_chunk_raw = f['action'][file_idx : file_idx + self.config.CHUNK_SIZE]
 
@@ -96,7 +98,8 @@ class RobotDataset(Dataset):
         actions = torch.from_numpy(action_chunk_raw).float()
         actions = (actions - self.qpos_mean) / self.qpos_std
         
-        image = self.transform(vision_raw)
+        img_top = self.transform(vis_top_raw)
+        img_side = self.transform(vis_side_raw)
         tactile = self.transform(tactile_raw)
         
-        return qpos, image, tactile, actions
+        return qpos, img_top, img_side, tactile, actions
