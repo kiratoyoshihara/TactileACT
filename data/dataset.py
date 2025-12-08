@@ -28,8 +28,9 @@ class RobotDataset(Dataset):
             with h5py.File(path, 'r') as f:
                 curr_len = min(
                     f['qpos'].shape[0],
-                    f['vis_top'].shape[0],
-                    f['vis_side'].shape[0],
+                    f['vision_top'].shape[0],
+                    f['vision_side'].shape[0],
+                    f['vision_hand'].shape[0],
                     f['tactile'].shape[0],
                     f['action'].shape[0]
                 )
@@ -88,8 +89,9 @@ class RobotDataset(Dataset):
 
         with h5py.File(file_path, 'r') as f:
             qpos_raw = f['qpos'][file_idx]
-            vis_top_raw = f['vis_top'][file_idx]
-            vis_side_raw = f['vis_side'][file_idx]
+            vis_top_raw = f['vision_top'][file_idx]
+            vis_side_raw = f['vision_side'][file_idx]
+            vis_hand_raw = f['vision_hand'][file_idx]
             tactile_raw = f['tactile'][file_idx]
             action_chunk_raw = f['action'][file_idx : file_idx + self.config.CHUNK_SIZE]
 
@@ -100,6 +102,7 @@ class RobotDataset(Dataset):
         
         img_top = self.transform(vis_top_raw)
         img_side = self.transform(vis_side_raw)
+        img_hand = self.transform(vis_hand_raw)
         tactile = self.transform(tactile_raw)
         
-        return qpos, img_top, img_side, tactile, actions
+        return qpos, img_top, img_side, img_hand, tactile, actions
