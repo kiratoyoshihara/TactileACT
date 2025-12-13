@@ -10,6 +10,9 @@
 
 ## 📂 Project Structure
     TactileACT/
+    ├── .devcontainer/
+    │   ├── devcontainer.json           # Config file for devcontainer     
+    │   └── Dockerfile                  # Config file for Docker 
     ├── configs/
     │   └── config.py                   # Hyperparameters 
     ├── data/

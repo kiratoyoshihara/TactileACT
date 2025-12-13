@@ -1,0 +1,18 @@
+.git
+.gitignore
+__pycache__
+*.ipynb_checkpoints
+
+data/*.h5
+data/*.hdf5
+data/*.bag
+
+logs/
+wandb/
+
+# Models & Checkpoints
+*.pth
+*.pt
+*.ckpt
+checkpoints/
+outputs/
