@@ -31,6 +31,7 @@
     │   ├── record_episode.sh           # Data collection helper script
     │   ├── teleop_gripper.py           # Keyboard teleop for gripper during data collection
     │   ├── teach_mode.py               # Impdedance Control Mode
+│   │   ├── replay_motion.py            # Replay KUKA's motion
     │   └── vis_dataset.py              # Data verification tool
     ├── utils/
     │   ├── utils.py                    # Helper functions
