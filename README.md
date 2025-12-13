@@ -11,36 +11,36 @@
 ## 📂 Project Structure
     TactileACT/
     ├── configs/
-    │   └── config.py               # Hyperparameters 
+    │   └── config.py                   # Hyperparameters 
     ├── data/
-    │   └── dataset.py              # PyTorch Dataset class 
+    │   └── dataset.py                  # PyTorch Dataset class 
     ├── launch/
-    │   ├── bringup.launch          # launch Hand-E driver and sensors
-    │   ├── sensors.launch          # launch GelSight/RealSense topic 
-    │   └── tf_publisher.launch     # launch topic for Rviz
+    │   ├── bringup.launch              # launch Hand-E driver and sensors
+    │   ├── sensors.launch              # launch GelSight/RealSense topic 
+    │   └── tf_publisher.launch         # launch topic for Rviz
     ├── models/
-    │   ├── backbones.py            # ResNet encoders (Vision & Tactile)
-    │   ├── cvae.py                 # CVAE module for action generation
-    │   ├── tactile_act.py          # Main ACT model with Dual Encoders
-    │   └── vis_transformer.py      # Custom Transformer for attention visualization
+    │   ├── backbones.py                # ResNet encoders (Vision & Tactile)
+    │   ├── cvae.py                     # CVAE module for action generation
+    │   ├── tactile_act.py              # Main ACT model with Dual Encoders
+    │   └── vis_transformer.py          # Custom Transformer for attention visualization
     ├── scripts/                   
-    │   ├── convert_bag_to_hdf5.py  # Data processing (rosbag -> hdf5)
-    │   ├── hande_driver_node.py    # Hand-E gripper node driver
-    │   ├── gelsight_driver_node.py # Gelsight Mini node driver
-    │   ├── record_episode.sh       # Data collection helper script
-    │   ├── teleop_gripper.py       # Keyboard teleop for gripper during data collection
-    │   ├── teach_mode.py           # Impdedance Control Mode
-    │   └── vis_dataset.py          # Data verification tool
+    │   ├── convert_bag_to_hdf5.py      # Data processing (rosbag -> hdf5)
+    │   ├── hande_driver_node.py        # Hand-E gripper node driver
+    │   ├── gelsight_driver_node.py     # Gelsight Mini node driver
+    │   ├── record_episode.sh           # Data collection helper script
+    │   ├── teleop_gripper.py           # Keyboard teleop for gripper during data collection
+    │   ├── teach_mode.py               # Impdedance Control Mode
+    │   └── vis_dataset.py              # Data verification tool
     ├── utils/
-    │   ├── utils.py                # Helper functions
-    │   ├── vis_attention.py        # Attention map visualization
-    │   └── vis_trajectory.py       # Trajectory plotting
-    ├── debug.py                    # Debugging script
-    ├── inference_node.py           # Real-time inference ROS node
-    ├── train.py                    # Training loop
-    ├── package.xml                 # package dependencies
-    ├── CMakeLists.txt              # build config
-    └── requirements.txt            # Python dependencies
+    │   ├── utils.py                    # Helper functions
+    │   ├── vis_attention.py            # Attention map visualization
+    │   └── vis_trajectory.py           # Trajectory plotting
+    ├── debug.py                        # Debugging script
+    ├── inference_node.py               # Real-time inference ROS node
+    ├── train.py                        # Training loop
+    ├── package.xml                     # package dependencies
+    ├── CMakeLists.txt                  # build config
+    └── requirements.txt                # Python dependencies
 
 ## 🚀 Workflow
 1. **Hardware Bring-up & Data Collection**:
