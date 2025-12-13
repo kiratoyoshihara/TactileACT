@@ -1,14 +1,14 @@
 # Tactile-ACT: Visuo-Tactile Action Chunking for Robust Robotic Disassembly
 **Tactile-ACT** is a multimodal imitation learning framework extending [Action Chunking with Transformers (ACT)](https://arxiv.org/abs/2304.13705 "ACT") to incorporate high-resolution tactile feedback ([GelSight](https://www.gelsight.com/gelsightmini/ "GelSight")). This project aims to achieve robust robotic disassembly tasks under occlusion and variable lighting conditions by fusing vision and tactile modalities.
 
-## 🤖 Hardware Setup
+## Hardware Setup 🤖 
 - **Robot Arm**: KUKA LBR iiwa 14 R820 (7 DoF)
 - **Gripper**: Robotiq Hand-E (1 DoF)
 - **Vision Sensor**: Intel RealSense D435 (RGB)
 - **Tactile Sensor**: GelSight Mini
 - **Environment** Ubuntu 20.04/ROS Noetic 
 
-## 📂 Project Structure
+## Project Structure 📂 
     TactileACT/
     ├── .devcontainer/
     │   ├── devcontainer.json           # Config file for devcontainer     
@@ -47,7 +47,7 @@
     ├── CMakeLists.txt                  # build config
     └── requirements.txt                # Python dependencies
 
-## 🐳 Docker Setup (Recommended)
+## Docker Setup (Recommended) 🐳 
 
 This project allows you to develop inside a Docker container using **VS Code Dev Containers**. This ensures a consistent environment with ROS Noetic and all dependencies pre-installed.
 
@@ -79,9 +79,9 @@ Now you can use `roslaunch tactile_act ...` command directly inside the VS Code 
 
 **Note on GUI**: The container is configured with X11 forwarding (`--net=host`, `/tmp/.X11-unix1`, etc.). You should be able to launch GUI applications like `Rviz` or `OpenCV windows` directly from the container.
 
-## 🚀 Workflow
+## Workflow 🚀
 
-### 1. Hardware Bring-up & Data Collection:
+### 1. Hardware Bring-up & Data Collection 📸:
 
 We employ a **"Ghost Replay" strategy** to collect high-quality visual data without human occlusion. 
 
@@ -162,7 +162,7 @@ We employ a **"Ghost Replay" strategy** to collect high-quality visual data with
 
 ---
 
-### 2. Data Processing:
+### 2. Data Processing 💻:
 
 Convert raw ROS1 bags (`.bag`) into H5 format for training. This script handles synchronization between 1kHz robot states and ~30Hz camera/gelsight.
 
@@ -174,7 +174,7 @@ python3 scripts/convert_bag_to_hdf5.py --bag data/rosbags/episode_001.bag --out 
 python3 scripts/vis_dataset.py --dataset data/episode_001.h5
 ```
 
-### 3. **Training**:
+### 3. **Training** 🧠:
 
 Train the Tactile-ACT model. The model uses **Dual Encoders** (one for Vision, one for Tactile) and **Modality Dropout** to prevent visual dominance.
 ```bash
@@ -184,7 +184,7 @@ python3 train.py
 - Checkpoints are saved in `checkpoints/`
 - Statistics (mean/std) are saved in `data/stats.json`
 
-### 4. **Real-World Inference**:
+### 4. **Real-World Inference** 🌏 :
 
 Run the trained policy on the real robot.
 ```bash
@@ -199,7 +199,7 @@ python3 inference_node.py
 - The node performs **Temporal Aggregation** for smooth control.
 - Real-time Attention Maps are published to `/debug/attention_map`
 
-## ⭐️ Key Features
+## Key Features ⭐️ 
 - **Separate Encoder Architecture**:
 
     Separate ResNet backbones for RGB and GelSight images to capture global context and local geometry respectively.
@@ -210,7 +210,7 @@ python3 inference_node.py
 
     Aligns multi-modal data (1kHz Proprioception, 30Hz Vision, ~15-25Hz Tactile) using the tactile timestamp as the master clock.
 
-## 🔧 Dependencies
+## Dependencies 🔧 
 - ROS 1 Humble
 - PyTorch
 - `lbr_fri_ros_stack` (For KUKA control)
