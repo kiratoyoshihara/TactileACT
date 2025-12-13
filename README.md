@@ -31,7 +31,7 @@
     │   ├── record_episode.sh           # Data collection helper script
     │   ├── teleop_gripper.py           # Keyboard teleop for gripper during data collection
     │   ├── teach_mode.py               # Impdedance Control Mode
-│   │   ├── replay_motion.py            # Replay KUKA's motion
+    │   ├── replay_motion.py            # Replay KUKA's motion
     │   └── vis_dataset.py              # Data verification tool
     ├── utils/
     │   ├── utils.py                    # Helper functions
@@ -45,83 +45,124 @@
     └── requirements.txt                # Python dependencies
 
 ## 🚀 Workflow
-1. **Hardware Bring-up & Data Collection**:
 
-    We collect human demonstration data using Kinesthetic Teaching (gravity compensation mode) for the arm and keyboard teleoperation for the gripper.
-    
-    1. Start KUKA Driver (In a separate terminal). Note: Adjust the package name according to your ROS 1 driver (e.g., `iiwa_stack` or `lbr_fri_ros_stack`).
+### 1. Hardware Bring-up & Data Collection
 
+We employ a **"Ghost Replay" strategy** to collect high-quality visual data without human occlusion. 
+
+1. **Phase 1**: Record the human's motion (trajectory & gripper commands) using Kinesthetic Teaching.
+2. **Phase 2**: The robot replays the motion automatically while recording all camera/tactile streams.
+
+---
+
+#### Phase 1: Human Demonstration (Trajectory Recording)
+*Goal: Record `_human.bag` containing only robot states and gripper commands.*
+
+1.  **Start KUKA Driver (Impedance Mode)**
+    * On SmartPad: Select **Impedance Control Mode**.
+    * Terminal 1:
         ```bash
         roslaunch lbr_fri_ros_stack lbr_driver.launch
         ```
-    2. Start System. This launches RealSense, GelSight, and the Hand-E driver.
 
+2.  **Start Drivers**
+    * Terminal 2:
         ```bash
         roslaunch tactile_act bringup.launch
         ```
-        - Starts RealSense `/camera_top/image_raw`, `/camera_side/image_raw`
-        - Starts GelSight `/gelsight/image_raw`
-        - Starts Hand-E Driver `/hande/command` `/hande/joint_states`
-    3. Start Teleoperation
+
+3.  **Start Teleoperation (Gripper)**
+    * Terminal 3:
         ```bash
-        # Make sure the script is executable (chmod +x)
-        rosrun tactile_act teleop_gripper.py
-        ```
-        or
-        ```python
         python3 scripts/teleop_gripper.py
         ```
-        - Use [SPACE] key to toggle Open/Close
-    4. Start Teaching Mode (Arm Follower)
-        To perform Kinesthetic Teaching in Impedance Mode without spring-back effect:
+        * Use **[SPACE]** key to toggle Open/Close.
+
+4.  **Start Teach Mode (Arm Follower)**
+    * To prevent the robot from springing back in Impedance Mode (Transparency Control):
+    * Terminal 4:
         ```bash
         python3 scripts/teach_mode.py
         ```
-    5. Check all topics available
-        ```bash
-        rostopic hz /camera_top/image_raw /camera_side/image_raw /camera_hand/image_raw /gelsight/image_raw /hande/joint_states /lbr_state
-        ``` 
-        Make sure all topics are displayed and confirm their FPS are proper.
 
-    6. Record Episode
+5.  **Record Trajectory**
+    * Terminal 5:
         ```bash
+        # Save as a temporary file (e.g., episode_001_human)
+        scripts/record_episode.sh episode_001_human
+        ```
+    * Perform the task by holding the robot. **Stop recording (Ctrl+C)** when finished.
+
+---
+
+#### Phase 2: Ghost Replay (Clean Data Collection)
+*Goal: Record the final `episode_001.bag` with clean visual data (no human hands).*
+
+1.  **Switch KUKA Mode**
+    * **Stop** `teach_mode.py` (Ctrl+C in Terminal 4).
+    * On SmartPad: Switch to **Position Control Mode**.
+
+2.  **Check Sensors**
+    * Ensure cameras and GelSight are positioned correctly.
+    * Terminal 5 (Check topics):
+        ```bash
+        rostopic hz /camera_top/image_raw /camera_side/image_raw /camera_hand/image_raw /gelsight_1/image_raw /gelsight_2/image_raw
+        ```
+
+3.  **Start Final Recording**
+    * Terminal 5:
+        ```bash
+        # This is the dataset file used for training
         scripts/record_episode.sh episode_001
-        ```    
-        - Saves data as `.bag` format.    
+        ```
 
-2. **Data Processing**:
+4.  **Run Replay**
+    * Terminal 4:
+        ```bash
+        # Replay the motion from Phase 1
+        python3 scripts/replay_motion.py --bag data/rosbags/episode_001_human.bag
+        ```
+    * The robot will move to the start position and replay the motion.
+    * **Stop recording** in Terminal 5 once the motion is complete.
 
-    Convert raw ROS1 bags(`.bag`) into H5 format for training. This script handles synchronization between 1kHz robot states and ~30Hz camera/gelsight.
-    ```bash
-    # Convert single episode
-    python3 scripts/convert_bag_to_hdf5.py --bag data/rosbags/episode_001.bag --out data/episode_001.h5
+---
 
-    # Verify the converted data (Check images and alignment)
-    python3 scripts/vis_dataset.py --dataset data/episode_001.h5
-    ```
-3. **Training**:
+### 2. Data Processing
 
-    Train the Tactile-ACT model. The model uses **Dual Encoders** (one for Vision, one for Tactile) and **Modality Dropout** to prevent visual dominance.
-    ```bash
-    # Edit configs/config.py if needed
-    python3 train.py
-    ```
-    - Checkpoints are saved in `checkpoints/`
-    - Statistics (mean/std) are saved in `data/stats.json`
-4. **Real-World Inference**:
+Convert raw ROS1 bags (`.bag`) into H5 format for training. This script handles synchronization between 1kHz robot states and ~30Hz camera/gelsight.
 
-    Run the trained policy on the real robot.
-    ```bash
-    # Ensure 'checkpoint/best_model.pth' and 'data/stats.json' exist
-    rosrun tactile_act inference_node.py
-    ```
-    or
-    ```python
-    # Ensure 'checkpoints/best_model.pth' and 'data/stats.json' exist
-    python3 inference_node.py
-    ```
-    - The node performs **Temporal Aggregation** for smooth control.
-    - Real-time Attention Maps are published to `/debug/attention_map`
+```bash
+# Convert single episode
+python3 scripts/convert_bag_to_hdf5.py --bag data/rosbags/episode_001.bag --out data/episode_001.h5
+
+# Verify the converted data (Check images and alignment)
+python3 scripts/vis_dataset.py --dataset data/episode_001.h5
+```
+
+### 3. **Training**:
+
+Train the Tactile-ACT model. The model uses **Dual Encoders** (one for Vision, one for Tactile) and **Modality Dropout** to prevent visual dominance.
+```bash
+# Edit configs/config.py if needed
+python3 train.py
+```
+- Checkpoints are saved in `checkpoints/`
+- Statistics (mean/std) are saved in `data/stats.json`
+
+### 4. **Real-World Inference**:
+
+Run the trained policy on the real robot.
+```bash
+# Ensure 'checkpoint/best_model.pth' and 'data/stats.json' exist
+rosrun tactile_act inference_node.py
+```
+or
+```python
+# Ensure 'checkpoints/best_model.pth' and 'data/stats.json' exist
+python3 inference_node.py
+```
+- The node performs **Temporal Aggregation** for smooth control.
+- Real-time Attention Maps are published to `/debug/attention_map`
 
 ## ⭐️ Key Features
 - **Separate Encoder Architecture**:
