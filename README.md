@@ -25,7 +25,8 @@
     │   └── vis_transformer.py     # Custom Transformer for attention visualization
     ├── scripts/                   
     │   ├── convert_bag_to_hdf5.py # Data processing (rosbag -> hdf5)
-    │   ├── hande_driver_node.py   # Hand-E gripper driver
+    │   ├── hande_driver_node.py   # Hand-E gripper node driver
+    │   ├── gelsight_driver_node.py# Gelsight Mini node driver
     │   ├── record_episode.sh      # Data collection helper script
     │   ├── teleop_gripper.py      # Keyboard teleop for gripper during data collection
     │   ├── teach_mode.py          # Impdedance Control Mode
