@@ -214,5 +214,4 @@ python3 inference_node.py
 - ROS 1 Humble
 - PyTorch
 - `lbr_fri_ros_stack` (For KUKA control)
-- `usb_cam` (For camera streaming)
 - Python packages: `h5py` `opencv-python` `rosbags` `matplotlib`
