@@ -78,7 +78,7 @@ Now you can use `roslaunch tactile_act ...` command directly inside the VS Code 
 
 ## 🚀 Workflow
 
-### 1. Hardware Bring-up & Data Collection
+### 1. Hardware Bring-up & Data Collection:
 
 We employ a **"Ghost Replay" strategy** to collect high-quality visual data without human occlusion. 
 
@@ -159,7 +159,7 @@ We employ a **"Ghost Replay" strategy** to collect high-quality visual data with
 
 ---
 
-### 2. Data Processing
+### 2. Data Processing:
 
 Convert raw ROS1 bags (`.bag`) into H5 format for training. This script handles synchronization between 1kHz robot states and ~30Hz camera/gelsight.
 
