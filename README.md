@@ -124,7 +124,7 @@
     - Real-time Attention Maps are published to `/debug/attention_map`
 
 ## ⭐️ Key Features
-- **Dual Encoder Architecture**:
+- **Separate Encoder Architecture**:
 
     Separate ResNet backbones for RGB and GelSight images to capture global context and local geometry respectively.
 - **Modality Dropout**:
