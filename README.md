@@ -23,7 +23,8 @@
     │   ├── cvae.py                     # CVAE module for action generation
     │   ├── tactile_act.py              # Main ACT model with Dual Encoders
     │   └── vis_transformer.py          # Custom Transformer for attention visualization
-    ├── scripts/                   
+    ├── scripts/     
+    │   ├── utilities                   # utilities from gsrobitics           
     │   ├── convert_bag_to_hdf5.py      # Data processing (rosbag -> hdf5)
     │   ├── hande_driver_node.py        # Hand-E gripper node driver
     │   ├── gelsight_driver_node.py     # Gelsight Mini node driver
