@@ -6,7 +6,7 @@
 - **Gripper**: Robotiq Hand-E (1 DoF)
 - **Vision Sensor**: Intel RealSense D435 (RGB)
 - **Tactile Sensor**: GelSight Mini
-- **Environment** Ubuntu 22.04/ROS Noetic 
+- **Environment** Ubuntu 20.04/ROS Noetic 
 
 ## 📂 Project Structure
     TactileACT/
@@ -43,6 +43,38 @@
     ├── package.xml                     # package dependencies
     ├── CMakeLists.txt                  # build config
     └── requirements.txt                # Python dependencies
+
+## 🐳 Docker Setup (Recommended)
+
+This project allows you to develop inside a Docker container using **VS Code Dev Containers**. This ensures a consistent environment with ROS Noetic and all dependencies pre-installed.
+
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine on Linux)
+- [Dev Containers Extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) for VS Code
+
+### How to Start
+1. Open the project in VS Code.
+2. You should see a notification: *"Folder contains a Dev Container configuration file. Reopen to folder to develop in a container."*
+3. Click **Reopen in Container**. (Or press `F1` and select **Dev Containers: Reopen in Container**).
+4. VS Code will build the Docker image and start the container. This may take a few minutes the first time.
+
+### Build Workspace inside Container
+Once the container is running, the VS Code terminal will open inside the repository folder. You need to build the workspace:
+
+```bash
+# 1. Go to the workspace root
+cd /root/catkin_ws
+
+# 2. Build the package
+catkin_make
+
+# 3. Source the environment
+source devel/setup.bash
+```
+
+Now you can use `roslaunch tactile_act ...` command directly inside the VS Code terminal.
+
+**Note on GUI**: The container is configured with X11 forwarding (`--net=host`, `/tmp/.X11-unix1`, etc.). You should be able to launch GUI applications like `Rviz` or `OpenCV windows` directly from the container.
 
 ## 🚀 Workflow
 
