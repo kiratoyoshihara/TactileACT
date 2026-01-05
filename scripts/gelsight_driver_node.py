@@ -14,7 +14,7 @@ class GelSightROSData:
     def __init__(self):
         rospy.init_node('gelsight_driver', anonymous=True)
 
-        self.device_id = rospy.get_param('~device_id', 0)
+        self.device_path = rospy.get_param('~device_path', '/dev/v4l/by-id/usb-xxxx')
         self.topic_name = rospy.get_param('~topic_name', 'image_raw')
         
         # Image Config (GelSight Mini Default)
@@ -22,7 +22,7 @@ class GelSightROSData:
         self.height = 480
         self.border_frac = 0.15 
 
-        rospy.loginfo(f"Initializing GelSight Mini on device {self.device_id}...")
+        rospy.loginfo(f"Initializing GelSight Mini on device {self.device_path}...")
         
         self.cam = GelSightMini(
             target_width=self.width,
@@ -31,7 +31,7 @@ class GelSightROSData:
         )
 
 
-        self.cam.camera = Camera(self.device_id)
+        self.cam.camera = Camera(self.device_path)
 
         # Setup ROS
         self.pub = rospy.Publisher(self.topic_name, Image, queue_size=1)
