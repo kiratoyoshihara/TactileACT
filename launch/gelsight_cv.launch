@@ -1,0 +1,18 @@
+<launch>
+  <group ns="gelsight_1">
+    <node name="gelsight_driver" pkg="tactile_act" type="gelsight_driver_cv.py" output="screen">
+      <param name="device_path" value="/dev/v4l/by-id/usb-Arducam_Technology_Co.__Ltd._GelSight_Mini_R0B_2BDG-EFN8_2BDGEFN8-video-index0" />
+      <param name="topic_name" value="image_raw" />
+      <param name="width" value="640" />
+      <param name="height" value="480" />
+    </node>
+  </group>
+  <group ns="gelsight_2">
+    <node name="gelsight_driver" pkg="tactile_act" type="gelsight_driver_cv.py" output="screen">
+      <param name="device_path" value="/dev/v4l/by-id/usb-Arducam_Technology_Co.__Ltd._GelSight_Mini_R0B_2BCJ-9717_2BCJ9717-video-index0" />
+      <param name="topic_name" value="image_raw" />
+      <param name="width" value="640" />
+      <param name="height" value="480" />
+    </node>
+  </group>
+</launch>
