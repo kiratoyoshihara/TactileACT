@@ -1,0 +1,41 @@
+<launch>
+  <group ns="camera_side">
+    <include file="$(find realsense2_camera)/launch/rs_camera.launch">
+      <arg name="serial_no" value="231522072550"/>
+      <arg name="tf_prefix" value="camera1"/>
+      <arg name="initial_reset" value="true"/>
+      <arg name="enable_depth" value="false"/>
+      <arg name="enable_infra1" value="false"/>
+      <arg name="enable_infra2" value="false"/>
+      <arg name="color_width" value="640"/>
+      <arg name="color_height" value="480"/>
+      <arg name="color_fps" value="30"/>
+    </include>
+  </group>
+  <group ns="camera_top">
+    <include file="$(find realsense2_camera)/launch/rs_camera.launch">
+      <arg name="serial_no" value="231522072278"/>
+      <arg name="tf_prefix" value="camera2"/>
+      <arg name="initial_reset" value="true"/>
+      <arg name="enable_depth" value="false"/>
+      <arg name="enable_infra1" value="false"/>
+      <arg name="enable_infra2" value="false"/>
+      <arg name="color_width" value="640"/>
+      <arg name="color_height" value="480"/>
+      <arg name="color_fps" value="30"/>
+    </include>
+  </group>
+  <group ns="camera_hand">
+    <include file="$(find realsense2_camera)/launch/rs_camera.launch">
+      <arg name="serial_no" value="231522072961"/>
+      <arg name="tf_prefix" value="hand"/>
+      <arg name="initial_reset" value="true"/>
+      <arg name="enable_depth" value="false"/>
+      <arg name="enable_infra1" value="false"/>
+      <arg name="enable_infra2" value="false"/>
+      <arg name="color_width" value="640"/>
+      <arg name="color_height" value="480"/>
+      <arg name="color_fps" value="30"/>
+    </include>
+  </group>
+</launch>
