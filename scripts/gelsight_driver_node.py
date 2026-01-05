@@ -65,12 +65,10 @@ class GelSightROSData:
 
         while not rospy.is_shutdown():
             try:
-                # SDKの update() を呼ぶ
-                # 内部で crop_and_resize が行われ、RGB画像が返ってきます
                 img = self.cam.update(1.0) 
 
                 if img is not None and img.shape[0] > 0:
-                    # SDKは RGB で返すので encoding="rgb8"
+                    # returns RGB
                     msg = self.bridge.cv2_to_imgmsg(img, encoding="rgb8")
                     msg.header.stamp = rospy.Time.now()
                     msg.header.frame_id = "gelsight_link"
@@ -78,7 +76,6 @@ class GelSightROSData:
                     self.pub.publish(msg)
                 
             except Exception as e:
-                # カメラが抜けた場合などのエラーハンドリング
                 rospy.logwarn_throttle(1, f"Capture error: {e}")
 
             self.rate.sleep()
